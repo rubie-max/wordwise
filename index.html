@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WordWise - Dictation + Dictionary</title>
+  <meta name="description" content="Practise spelling dictation and see full dictionary details for every word: pronunciation, meanings, examples, synonyms and origin.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">W</span>
+      <div>
+        <h1>WordWise</h1>
+        <p>Dictation + Dictionary</p>
+      </div>
+    </div>
+    <nav class="tabs">
+      <button class="tab active" data-tab="dictation">Dictation</button>
+      <button class="tab" data-tab="dictionary">Dictionary</button>
+      <button class="tab" data-tab="progress">Progress</button>
+    </nav>
+    <div class="voice-settings">
+      <label>Voice
+        <select id="voice"></select>
+      </label>
+      <label>Speed <span id="rate-value">0.9x</span>
+        <input id="rate" type="range" min="0.5" max="1.5" step="0.1" value="0.9">
+      </label>
+    </div>
+  </header>
+
+  <p id="speech-warning" class="warning" hidden>Your browser doesn't support speech. Try Chrome or Edge for dictation audio.</p>
+
+  <main>
+    <!-- Dictation -->
+    <section id="dictation" class="panel">
+      <form id="setup" class="card setup">
+        <h2>Start a dictation</h2>
+        <p class="muted">The word is spoken aloud. Type what you hear, then see whether you got it right along with the word's full dictionary details.</p>
+        <div class="grid">
+          <label>Word list
+            <select id="list"></select>
+          </label>
+          <label>Number of words
+            <select id="count">
+              <option value="10">10</option>
+              <option value="20">20</option>
+              <option value="0">All</option>
+            </select>
+          </label>
+          <label class="check"><input id="shuffle" type="checkbox" checked> Shuffle words</label>
+        </div>
+        <label id="custom-wrap" hidden>Your words (separate with commas or new lines)
+          <textarea id="custom-words" rows="5" placeholder="necessary, rhythm, conscience"></textarea>
+        </label>
+        <p id="setup-error" class="error-text"></p>
+        <button class="btn big" type="submit">Start dictation</button>
+      </form>
+
+      <div id="session" hidden>
+        <div class="card">
+          <div class="session-top">
+            <span id="progress-text"></span>
+            <button id="quit" class="btn ghost small" type="button">End session</button>
+          </div>
+          <div class="progress"><div id="progress-bar"></div></div>
+
+          <div class="listen">
+            <button id="play" class="btn" type="button">Play word</button>
+            <button id="play-slow" class="btn ghost" type="button">Slower</button>
+            <button id="play-sentence" class="btn ghost" type="button">In a sentence</button>
+            <button id="play-meaning" class="btn ghost" type="button">Meaning hint</button>
+          </div>
+
+          <form id="answer-form" class="answer">
+            <input id="answer" type="text" placeholder="Type the word you hear" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            <button id="check" class="btn" type="submit">Check</button>
+            <button id="skip" class="btn ghost" type="button">Skip</button>
+          </form>
+          <div id="feedback" aria-live="polite"></div>
+        </div>
+        <div id="word-details"></div>
+      </div>
+
+      <div id="summary" class="card" hidden>
+        <h2>Session complete</h2>
+        <p class="score" id="summary-score"></p>
+        <p id="summary-message" class="muted"></p>
+        <ul id="summary-list" class="summary-list"></ul>
+        <div class="row">
+          <button id="retry-mistakes" class="btn" type="button">Practise the wrong words again</button>
+          <button id="new-session" class="btn ghost" type="button">New dictation</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Dictionary -->
+    <section id="dictionary" class="panel" hidden>
+      <form id="dict-form" class="card search">
+        <input id="dict-input" type="search" placeholder="Search any English word" autocomplete="off" spellcheck="false">
+        <button class="btn" type="submit">Search</button>
+      </form>
+      <div id="recent" class="recent"></div>
+      <div id="dict-result">
+        <div class="card empty">
+          <p>Look up a word to see its pronunciation, spelling breakdown, meanings, examples, synonyms, antonyms and origin.</p>
+          <p class="related"><span>Try</span>
+            <button class="chip link" data-lookup="serendipity">serendipity</button>
+            <button class="chip link" data-lookup="ephemeral">ephemeral</button>
+            <button class="chip link" data-lookup="conscientious">conscientious</button>
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Progress -->
+    <section id="progress" class="panel" hidden>
+      <div id="stats" class="stats"></div>
+      <div class="card">
+        <h2>Words to revise</h2>
+        <p class="muted">Words you misspelled. Get one right in any dictation and it leaves this list.</p>
+        <div id="mistake-list" class="related"></div>
+      </div>
+      <div class="card">
+        <h2>Recent sessions</h2>
+        <div id="history-list"></div>
+      </div>
+      <button id="clear-progress" class="btn ghost small" type="button">Clear all progress</button>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <footer>
+    Definitions from the <a href="https://dictionaryapi.dev/" target="_blank" rel="noopener">Free Dictionary API</a>. Progress is saved only in this browser.
+  </footer>
+
+  <script src="words.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
