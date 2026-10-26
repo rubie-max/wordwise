@@ -46,6 +46,20 @@ $('#sign-out').addEventListener('click', () => {
   lockApp();
 });
 
+$('#gate-reveal').addEventListener('click', () => {
+  const input = $('#gate-pass');
+  const show = input.type === 'password';
+  input.type = show ? 'text' : 'password';
+  $('#gate-reveal').textContent = show ? 'Hide' : 'Show';
+  $('#gate-reveal').setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+});
+
+$('#theme-toggle').addEventListener('click', () => {
+  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = next;
+  store.set('wordwise-theme', next);
+});
+
 if (store.get(AUTH_KEY, '') === ACCESS_USER) unlockApp();
 
 function toast(message) {
