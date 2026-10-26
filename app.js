@@ -11,6 +11,8 @@ const store = {
   set(key, value) { localStorage.setItem(key, JSON.stringify(value)); },
 };
 
+const FLAME = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c1 3.5-1.5 5-1.5 8 0 1.5 1 2.5 2 2.5 1.6 0 2.5-1.3 2.5-3 2 1.6 3 4 3 6 0 3.9-2.9 6.5-6.5 6.5S5 19.4 5 15.5C5 10 10 8 12 2z"/></svg>';
+
 /* Simple personal lock — not real security. */
 const ACCESS_USER = 'Kaizen';
 const ACCESS_PASS = 'Kaizen@2026';
@@ -43,6 +45,7 @@ $('#gate-form').addEventListener('submit', e => {
 
 $('#sign-out').addEventListener('click', () => {
   localStorage.removeItem(AUTH_KEY);
+  closePopovers();
   lockApp();
 });
 
@@ -79,12 +82,38 @@ function shuffle(list) {
   return a;
 }
 
+/* ---------- Popovers ---------- */
+
+function closePopovers() {
+  $$('.popover').forEach(p => (p.hidden = true));
+  $$('[aria-expanded]').forEach(b => b.setAttribute('aria-expanded', 'false'));
+}
+
+function bindPopover(toggleSel, panelSel) {
+  const toggle = $(toggleSel);
+  const panel = $(panelSel);
+  toggle.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = panel.hidden;
+    closePopovers();
+    panel.hidden = !open;
+    toggle.setAttribute('aria-expanded', String(open));
+  });
+  panel.addEventListener('click', e => e.stopPropagation());
+}
+
+bindPopover('#voice-toggle', '#voice-panel');
+bindPopover('#account-toggle', '#account-panel');
+document.addEventListener('click', closePopovers);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePopovers(); });
+
 /* ---------- Tabs ---------- */
 
 function showTab(name) {
   $$('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   $$('.panel').forEach(p => (p.hidden = p.id !== name));
   if (name === 'progress') renderProgress();
+  window.scrollTo({ top: 0 });
 }
 $$('.tab').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
 
@@ -127,6 +156,8 @@ function speak(text, rate = +$('#rate').value) {
 }
 
 const spellOut = word => speak(word.toUpperCase().split('').join(', '), 0.7);
+
+$('#voice-test').addEventListener('click', () => speak('Necessary. This is how your dictation will sound.'));
 
 /* ---------- Dictionary data ---------- */
 
@@ -279,10 +310,95 @@ $('#dict-form').addEventListener('submit', e => {
   search($('#dict-input').value);
 });
 
-/* ---------- Dictation ---------- */
+/* ---------- Days, streak and goal ---------- */
+
+const pad = n => String(n).padStart(2, '0');
+const dayKey = d => { const x = new Date(d); return `${x.getFullYear()}-${pad(x.getMonth() + 1)}-${pad(x.getDate())}`; };
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+function streakInfo() {
+  const totals = new Map();
+  for (const h of store.get('history', [])) {
+    const k = dayKey(h.date);
+    totals.set(k, (totals.get(k) || 0) + h.total);
+  }
+
+  const today = new Date();
+  let current = 0;
+  let d = totals.has(dayKey(today)) ? today : addDays(today, -1);
+  while (totals.has(dayKey(d))) {
+    current++;
+    d = addDays(d, -1);
+  }
+
+  let best = 0;
+  let run = 0;
+  let prev = null;
+  for (const k of [...totals.keys()].sort()) {
+    run = prev && dayKey(addDays(prev, 1)) === k ? run + 1 : 1;
+    best = Math.max(best, run);
+    prev = new Date(`${k}T00:00:00`);
+  }
+  return { current, best, totals };
+}
+
+function renderGreeting() {
+  const h = new Date().getHours();
+  const part = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  $('#greeting').textContent = `${part}, ${ACCESS_USER}`;
+  $('#today-date').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+function renderStreak() {
+  const { current, best, totals } = streakInfo();
+  $('#streak-days').textContent = current;
+  $('#streak-unit').textContent = current === 1 ? 'day' : 'days';
+
+  const today = new Date();
+  $('#week').innerHTML = Array.from({ length: 7 }, (_, i) => {
+    const d = addDays(today, i - 6);
+    const done = totals.has(dayKey(d));
+    const isToday = i === 6;
+    const label = isToday ? 'Today' : d.toLocaleDateString(undefined, { weekday: 'short' });
+    return `<div class="day${done ? ' done' : ''}${isToday ? ' today' : ''}" title="${esc(d.toDateString())}${done ? ', practised' : ''}">
+      <i>${done ? FLAME : ''}</i><span>${esc(label)}</span>
+    </div>`;
+  }).join('');
+
+  $('#streak-best').textContent = best
+    ? `Best streak: ${plural(best, 'day')}. A day counts once you finish a dictation.`
+    : 'Finish a dictation today to start your streak.';
+
+  const goal = store.get('dailyGoal', 10);
+  const done = totals.get(dayKey(today)) || 0;
+  $('#goal-ring').style.setProperty('--pct', Math.min(100, (done / goal) * 100));
+  $('#goal-done').textContent = done;
+  $('#goal-of').textContent = `of ${goal}`;
+  $('#goal-text').textContent = done >= goal
+    ? 'Goal reached for today. Extra practice still counts.'
+    : `${plural(goal - done, 'more word')} to reach today's goal.`;
+}
+
+/* ---------- Practice home ---------- */
+
+const LIST_BLURBS = {
+  easy: 'Everyday words',
+  medium: 'School words and silent letters',
+  hard: 'Tricky exam words',
+  misspelled: 'The classic spelling traps',
+  mistakes: 'Words you got wrong before',
+  custom: 'Typed, pasted or imported',
+};
+const LIST_KEYS = [...Object.keys(WORD_LISTS), 'mistakes', 'custom'];
+
+let selectedList = store.get('selectedList', 'misspelled');
+if (!LIST_KEYS.includes(selectedList)) selectedList = 'easy';
+let selectedCount = store.get('count', 10);
 
 const session = { words: [], index: 0, results: [], checked: false, label: '' };
 const current = () => session.words[session.index];
+const parseCustom = text => [...new Set(text.split(/[\n,;]+/).map(w => w.trim()).filter(Boolean))];
 
 function listLabel(key) {
   if (key === 'mistakes') return 'My mistakes';
@@ -290,17 +406,86 @@ function listLabel(key) {
   return WORD_LISTS[key].label;
 }
 
-function populateLists() {
-  const selected = $('#list').value;
-  $('#list').innerHTML = Object.entries(WORD_LISTS)
-    .map(([key, l]) => `<option value="${key}">${esc(l.label)} (${l.words.length})</option>`).join('')
-    + `<option value="mistakes">My mistakes (${store.get('mistakes', []).length})</option>`
-    + '<option value="custom">My own words</option>';
-  if (selected) $('#list').value = selected;
+function listWords(key) {
+  if (key === 'custom') return parseCustom($('#custom-words').value);
+  if (key === 'mistakes') return store.get('mistakes', []);
+  return WORD_LISTS[key].words.slice();
 }
 
-$('#list').addEventListener('change', () => ($('#custom-wrap').hidden = $('#list').value !== 'custom'));
+function renderHero() {
+  const n = listWords(selectedList).length;
+  const take = selectedCount ? Math.min(selectedCount, n) : n;
+  $('#hero-title').textContent = listLabel(selectedList);
+  if (n) {
+    $('#hero-sub').textContent = `${plural(take, 'word')}${$('#shuffle').checked ? ', shuffled' : ''}. Hear each word, type it, then study it.`;
+  } else {
+    $('#hero-sub').textContent = selectedList === 'mistakes'
+      ? 'No saved mistakes yet. Pick another list.'
+      : 'Add some words below to start.';
+  }
+}
+
+function renderLists() {
+  $('#list-grid').innerHTML = LIST_KEYS.map(key => {
+    const n = listWords(key).length;
+    const on = key === selectedList;
+    return `<button type="button" class="list-card${on ? ' active' : ''}" data-list="${key}" role="radio" aria-checked="${on}">
+      <span class="list-name">${esc(listLabel(key))}</span>
+      <span class="list-blurb">${esc(LIST_BLURBS[key])}</span>
+      <span class="list-count">${plural(n, 'word')}</span>
+    </button>`;
+  }).join('');
+  $('#custom-wrap').hidden = selectedList !== 'custom';
+  const customN = parseCustom($('#custom-words').value).length;
+  $('#custom-count').textContent = customN ? `${plural(customN, 'word')} ready.` : '';
+  renderHero();
+}
+
+function renderCount() {
+  $$('#count-pills [data-count]').forEach(b => {
+    const on = +b.dataset.count === selectedCount;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-checked', String(on));
+  });
+  renderHero();
+}
+
+function renderHome() {
+  renderGreeting();
+  renderLists();
+  renderCount();
+  renderStreak();
+}
+
+$('#list-grid').addEventListener('click', e => {
+  const b = e.target.closest('[data-list]');
+  if (!b) return;
+  selectedList = b.dataset.list;
+  store.set('selectedList', selectedList);
+  $('#setup-error').textContent = '';
+  renderLists();
+  if (selectedList === 'custom') $('#custom-words').focus();
+});
+
+$('#count-pills').addEventListener('click', e => {
+  const b = e.target.closest('[data-count]');
+  if (!b) return;
+  selectedCount = +b.dataset.count;
+  store.set('count', selectedCount);
+  renderCount();
+});
+
+$('#shuffle').checked = store.get('shuffle', true);
+$('#shuffle').addEventListener('change', () => {
+  store.set('shuffle', $('#shuffle').checked);
+  renderHero();
+});
+
 $('#custom-words').value = store.get('customWords', '');
+$('#custom-words').addEventListener('input', () => {
+  store.set('customWords', $('#custom-words').value);
+  renderLists();
+});
 
 $('#import-file').addEventListener('change', e => {
   const file = e.target.files && e.target.files[0];
@@ -308,9 +493,10 @@ $('#import-file').addEventListener('change', e => {
   const reader = new FileReader();
   reader.onload = () => {
     const text = String(reader.result || '').replace(/^\uFEFF/, '');
-    const current = $('#custom-words').value.trim();
-    $('#custom-words').value = current ? `${current}\n${text}` : text;
+    const existing = $('#custom-words').value.trim();
+    $('#custom-words').value = existing ? `${existing}\n${text}` : text;
     store.set('customWords', $('#custom-words').value);
+    renderLists();
     toast(`Imported ${file.name}`);
     e.target.value = '';
   };
@@ -318,38 +504,29 @@ $('#import-file').addEventListener('change', e => {
   reader.readAsText(file);
 });
 
-const parseCustom = text => [...new Set(text.split(/[\n,;]+/).map(w => w.trim()).filter(Boolean))];
+/* ---------- Dictation session ---------- */
 
 function startSession(words, label) {
   Object.assign(session, { words, index: 0, results: [], label });
+  $('#session-list').textContent = label;
   $('#setup').hidden = true;
   $('#summary').hidden = true;
   $('#session').hidden = false;
+  window.scrollTo({ top: 0 });
   showWord();
 }
 
 $('#setup').addEventListener('submit', e => {
   e.preventDefault();
-  const key = $('#list').value;
-  let words;
-  if (key === 'custom') {
-    store.set('customWords', $('#custom-words').value);
-    words = parseCustom($('#custom-words').value);
-  } else if (key === 'mistakes') {
-    words = store.get('mistakes', []);
-  } else {
-    words = WORD_LISTS[key].words.slice();
-  }
-
+  let words = listWords(selectedList);
   if (!words.length) {
-    $('#setup-error').textContent = key === 'mistakes' ? 'You have no saved mistakes yet.' : 'Add at least one word.';
+    $('#setup-error').textContent = selectedList === 'mistakes' ? 'You have no saved mistakes yet.' : 'Add at least one word first.';
     return;
   }
   $('#setup-error').textContent = '';
   if ($('#shuffle').checked) words = shuffle(words);
-  const count = +$('#count').value;
-  if (count) words = words.slice(0, count);
-  startSession(words, listLabel(key));
+  if (selectedCount) words = words.slice(0, selectedCount);
+  startSession(words, listLabel(selectedList));
 });
 
 function showWord() {
@@ -450,14 +627,17 @@ async function record(word, typed) {
   $('#answer').disabled = true;
   $('#skip').disabled = true;
   $('#feedback').innerHTML = correct
-    ? `<p class="ok">Correct! <b>${esc(word)}</b></p>`
-    : `<p class="bad">${typed ? 'Not quite.' : 'Skipped.'} The correct spelling is <b>${esc(word)}</b>.</p>
-       ${typed ? `<p class="diff">${diffHtml(typed, word)}</p>
-       <p class="muted small">Red letters are wrong or extra; green letters are the ones you missed.</p>` : ''}`;
+    ? `<div class="feedback good"><strong>Correct</strong><span>${esc(word)}</span></div>`
+    : `<div class="feedback bad"><strong>${typed ? 'Not quite' : 'Skipped'}</strong><span>The correct spelling is <b>${esc(word)}</b></span></div>
+       ${typed ? `<div class="diff-box">
+         <p class="eyebrow">Your spelling, corrected</p>
+         <div class="diff">${diffHtml(typed, word)}</div>
+         <p class="muted small">Red tiles are wrong or extra letters. Green tiles are letters you missed.</p>
+       </div>` : ''}`;
   $('#check').textContent = index + 1 < session.words.length ? 'Next word' : 'See results';
   $('#check').focus();
 
-  $('#word-details').innerHTML = '<p class="muted">Loading word details...</p>';
+  $('#word-details').innerHTML = '<p class="muted loading">Loading word details...</p>';
   try {
     const html = wordCard(word, await lookup(word));
     if (session.index === index && session.checked) $('#word-details').innerHTML = html;
@@ -489,10 +669,11 @@ $('#quit').addEventListener('click', () => {
 
 function showSetup() {
   if (canSpeak) speechSynthesis.cancel();
-  populateLists();
+  renderHome();
   $('#session').hidden = true;
   $('#summary').hidden = true;
   $('#setup').hidden = false;
+  window.scrollTo({ top: 0 });
 }
 
 function finish() {
@@ -501,20 +682,25 @@ function finish() {
   const score = results.filter(r => r.correct).length;
   const history = store.get('history', []);
   history.unshift({ date: new Date().toISOString(), list: session.label, score, total: results.length });
-  store.set('history', history.slice(0, 50));
+  store.set('history', history.slice(0, 500));
 
   const pct = Math.round((score / results.length) * 100);
-  $('#summary-score').textContent = `${score} / ${results.length}`;
-  $('#summary-message').textContent = pct === 100 ? 'Perfect score!' : pct >= 70 ? 'Great work. Review the words below.' : 'Keep practising. Tap a word to study it.';
+  $('#summary-ring').style.setProperty('--pct', pct);
+  $('#summary-pct').textContent = `${pct}%`;
+  $('#summary-correct').textContent = score;
+  $('#summary-missed').textContent = results.length - score;
+  $('#summary-total').textContent = results.length;
+  $('#summary-message').textContent = pct === 100 ? 'Perfect spelling.' : pct >= 70 ? 'Great work.' : 'Keep practising.';
   $('#summary-list').innerHTML = results.map(r => `<li class="${r.correct ? 'ok' : 'bad'}">
       <button class="link" data-lookup="${esc(r.word)}">${esc(r.word)}</button>
-      ${r.correct ? '' : `<span class="muted">you wrote: ${r.typed ? esc(r.typed) : '(skipped)'}</span>`}
+      ${r.correct ? '<span class="muted">correct</span>' : `<span class="muted">you wrote: ${r.typed ? esc(r.typed) : '(skipped)'}</span>`}
     </li>`).join('');
   $('#retry-mistakes').hidden = score === results.length;
 
   $('#session').hidden = true;
   $('#summary').hidden = false;
-  populateLists();
+  window.scrollTo({ top: 0 });
+  renderHome();
 }
 
 $('#retry-mistakes').addEventListener('click', () => {
@@ -529,19 +715,30 @@ function renderProgress() {
   const mistakes = store.get('mistakes', []);
   const total = history.reduce((s, h) => s + h.total, 0);
   const correct = history.reduce((s, h) => s + h.score, 0);
+  const { current: streak, best, totals } = streakInfo();
 
   $('#stats').innerHTML = `
-    <div class="stat"><b>${history.length}</b><span>sessions</span></div>
+    <div class="stat"><b>${streak}</b><span>day streak (best ${best})</span></div>
     <div class="stat"><b>${total}</b><span>words practised</span></div>
     <div class="stat"><b>${total ? Math.round((correct / total) * 100) : 0}%</b><span>accuracy</span></div>
     <div class="stat"><b>${mistakes.length}</b><span>words to revise</span></div>`;
+
+  const today = new Date();
+  const days = Array.from({ length: 28 }, (_, i) => addDays(today, i - 27));
+  $('#calendar').innerHTML =
+    days.slice(0, 7).map(d => `<span class="cal-label">${esc(d.toLocaleDateString(undefined, { weekday: 'narrow' }))}</span>`).join('')
+    + days.map(d => {
+      const n = totals.get(dayKey(d)) || 0;
+      const level = n === 0 ? 0 : n < 10 ? 1 : n < 20 ? 2 : 3;
+      return `<span class="cal-day level-${level}${dayKey(d) === dayKey(today) ? ' today' : ''}" title="${esc(d.toDateString())}: ${plural(n, 'word')}"></span>`;
+    }).join('');
 
   $('#mistake-list').innerHTML = mistakes.length ? chips(mistakes) : '<p class="muted">No words to revise yet.</p>';
 
   $('#history-list').innerHTML = history.length
     ? `<table>
         <thead><tr><th>Date</th><th>List</th><th>Score</th></tr></thead>
-        <tbody>${history.map(h => `<tr>
+        <tbody>${history.slice(0, 50).map(h => `<tr>
           <td>${new Date(h.date).toLocaleString()}</td>
           <td>${esc(h.list)}</td>
           <td>${h.score} / ${h.total}</td>
@@ -555,10 +752,10 @@ $('#clear-progress').addEventListener('click', () => {
   ['history', 'mistakes', 'recent'].forEach(k => localStorage.removeItem(k));
   renderProgress();
   renderRecent();
-  populateLists();
+  renderHome();
 });
 
 /* ---------- Init ---------- */
 
-populateLists();
+renderHome();
 renderRecent();
