@@ -321,7 +321,15 @@ textarea { resize: vertical; margin-top: .35rem; }
 }
 .chip:hover { border-color: var(--accent); }
 .link { background: none; border: 0; padding: 0; font: inherit; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
-.chip.link { text-decoration: none; padding: .22rem .75rem; font-size: .8rem; }
+.chip.link {
+  text-decoration: none;
+  padding: .22rem .75rem;
+  font-size: .8rem;
+  background: var(--accent-soft);
+  border: 1px solid transparent;
+  color: var(--accent-ink);
+}
+.chip.link:hover { border-color: var(--accent); }
 
 /* Dictation session */
 .session-top { display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: var(--muted); }
