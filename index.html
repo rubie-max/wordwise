@@ -7,7 +7,22 @@
   <meta name="description" content="Practise spelling dictation and see full dictionary details for every word: pronunciation, meanings, examples, synonyms and origin.">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="locked">
+  <div id="gate" class="gate">
+    <form id="gate-form" class="card gate-card">
+      <h2>WordWise</h2>
+      <p class="muted">Sign in to open dictation and the dictionary.</p>
+      <label>Username
+        <input id="gate-user" type="text" autocomplete="username" required>
+      </label>
+      <label>Password
+        <input id="gate-pass" type="password" autocomplete="current-password" required>
+      </label>
+      <p id="gate-error" class="error-text"></p>
+      <button class="btn big" type="submit">Open</button>
+    </form>
+  </div>
+
   <header class="topbar">
     <div class="brand">
       <span class="logo">W</span>
@@ -28,6 +43,7 @@
       <label>Speed <span id="rate-value">0.9x</span>
         <input id="rate" type="range" min="0.5" max="1.5" step="0.1" value="0.9">
       </label>
+      <button id="sign-out" class="btn ghost small" type="button">Sign out</button>
     </div>
   </header>
 
@@ -52,8 +68,9 @@
           </label>
           <label class="check"><input id="shuffle" type="checkbox" checked> Shuffle words</label>
         </div>
-        <label id="custom-wrap" hidden>Your words (separate with commas or new lines)
+        <label id="custom-wrap" hidden>Your words (type them, paste from ChatGPT, or import a file)
           <textarea id="custom-words" rows="5" placeholder="necessary, rhythm, conscience"></textarea>
+          <input id="import-file" type="file" accept=".txt,.csv,text/plain,text/csv">
         </label>
         <p id="setup-error" class="error-text"></p>
         <button class="btn big" type="submit">Start dictation</button>

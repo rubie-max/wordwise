@@ -11,6 +11,43 @@ const store = {
   set(key, value) { localStorage.setItem(key, JSON.stringify(value)); },
 };
 
+/* Simple personal lock — not real security. */
+const ACCESS_USER = 'Kaizen';
+const ACCESS_PASS = 'Kaizen@2026';
+const AUTH_KEY = 'wordwise-auth';
+
+function unlockApp() {
+  document.body.classList.remove('locked');
+  $('#gate').hidden = true;
+}
+
+function lockApp() {
+  document.body.classList.add('locked');
+  $('#gate').hidden = false;
+  $('#gate-pass').value = '';
+  $('#gate-user').focus();
+}
+
+$('#gate-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const user = $('#gate-user').value.trim();
+  const pass = $('#gate-pass').value;
+  if (user === ACCESS_USER && pass === ACCESS_PASS) {
+    store.set(AUTH_KEY, ACCESS_USER);
+    $('#gate-error').textContent = '';
+    unlockApp();
+  } else {
+    $('#gate-error').textContent = 'Wrong username or password.';
+  }
+});
+
+$('#sign-out').addEventListener('click', () => {
+  localStorage.removeItem(AUTH_KEY);
+  lockApp();
+});
+
+if (store.get(AUTH_KEY, '') === ACCESS_USER) unlockApp();
+
 function toast(message) {
   const el = $('#toast');
   el.textContent = message;
@@ -250,6 +287,22 @@ function populateLists() {
 
 $('#list').addEventListener('change', () => ($('#custom-wrap').hidden = $('#list').value !== 'custom'));
 $('#custom-words').value = store.get('customWords', '');
+
+$('#import-file').addEventListener('change', e => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const text = String(reader.result || '').replace(/^\uFEFF/, '');
+    const current = $('#custom-words').value.trim();
+    $('#custom-words').value = current ? `${current}\n${text}` : text;
+    store.set('customWords', $('#custom-words').value);
+    toast(`Imported ${file.name}`);
+    e.target.value = '';
+  };
+  reader.onerror = () => toast('Could not read that file.');
+  reader.readAsText(file);
+});
 
 const parseCustom = text => [...new Set(text.split(/[\n,;]+/).map(w => w.trim()).filter(Boolean))];
 
