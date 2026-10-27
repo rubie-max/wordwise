@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WordWise - soft and glow directions</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@500;600;700;800&family=Outfit:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Inter, system-ui, sans-serif; background: #e7e6e2; color: #1a1a1a; }
+  .page-head { max-width: 1000px; margin: 0 auto; padding: 40px 24px 8px; }
+  .page-head h1 { font-size: 28px; letter-spacing: -.02em; }
+  .page-head p { color: #5d5d5d; margin-top: 6px; }
+  section.theme { max-width: 1000px; margin: 0 auto; padding: 36px 24px; display: grid; grid-template-columns: 300px 300px 1fr; gap: 28px; align-items: start; }
+  .info h2 { font-size: 22px; letter-spacing: -.01em; }
+  .info .num { font-size: 12px; font-weight: 600; color: #8a8a8a; letter-spacing: .12em; text-transform: uppercase; }
+  .info p { color: #4b4b4b; font-size: 14px; line-height: 1.55; margin-top: 8px; }
+  .info .mix { font-size: 12px; color: #6a5acd; font-weight: 600; margin-top: 10px; }
+  .info .fonts { font-size: 12px; color: #777; margin-top: 4px; }
+  .swatches { display: flex; gap: 6px; margin-top: 14px; }
+  .swatches i { width: 30px; height: 30px; border-radius: 8px; border: 1px solid rgb(0 0 0 / .12); }
+
+  .phone { width: 300px; height: 620px; border-radius: 46px; border: 10px solid #121212; overflow: hidden; position: relative; box-shadow: 0 24px 50px rgb(0 0 0 / .22); display: flex; flex-direction: column; isolation: isolate; }
+  .status { display: flex; justify-content: space-between; align-items: center; padding: 10px 22px 6px; font-size: 12px; font-weight: 700; position: relative; z-index: 3; }
+  .status .notch { width: 74px; height: 20px; border-radius: 99px; background: #121212; }
+  .scr { flex: 1; display: flex; flex-direction: column; padding: 8px 18px 14px; gap: 12px; position: relative; z-index: 2; min-height: 0; }
+  .grow { flex: 1; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .between { justify-content: space-between; }
+  .center { text-align: center; align-items: center; }
+  .bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+  .bg i { position: absolute; border-radius: 50%; filter: blur(46px); }
+
+  /* mascot */
+  .blob { --s: 60px; --c: #ff9a5c; width: var(--s); height: calc(var(--s) * .92); border-radius: 50% 50% 46% 46% / 56% 56% 44% 44%; position: relative; flex-shrink: 0;
+    background: radial-gradient(circle at 30% 26%, rgb(255 255 255 / .6), transparent 30%), var(--c);
+    box-shadow: inset -5px -7px 0 rgb(0 0 0 / .09), 0 8px 16px rgb(0 0 0 / .16); }
+  .blob .e { position: absolute; top: 36%; width: 13%; height: 21%; background: #231b3d; border-radius: 50%; }
+  .blob .e::after { content: ""; position: absolute; top: 16%; left: 20%; width: 40%; height: 32%; background: #fff; border-radius: 50%; }
+  .blob .e.l { left: 29%; } .blob .e.r { right: 29%; }
+  .blob .m { position: absolute; left: 50%; top: 58%; width: 20%; height: 12%; transform: translateX(-50%); border: 2.5px solid #231b3d; border-top: 0; border-radius: 0 0 99px 99px; }
+  .blob .ck { position: absolute; top: 58%; width: 14%; height: 9%; background: #ff5f8f; opacity: .5; border-radius: 50%; }
+  .blob .ck.l { left: 13%; } .blob .ck.r { right: 13%; }
+
+  .lt { display: flex; gap: 4px; justify-content: center; }
+  .lt b { width: 25px; height: 33px; display: grid; place-items: center; font-size: 16px; }
+
+  /* A. Dusk Clay */
+  .dusk { background: #1b1633; color: #f3efff; font-family: Nunito, sans-serif; }
+  .dusk .bg i:nth-child(1) { width: 240px; height: 240px; background: #4a2f9a; top: -70px; left: -60px; opacity: .8; }
+  .dusk .bg i:nth-child(2) { width: 220px; height: 220px; background: #12507a; bottom: -40px; right: -80px; opacity: .7; }
+  .dusk .clay { background: #2a2352; border-radius: 26px; box-shadow: inset 2px 2px 0 rgb(255 255 255 / .07), inset -3px -4px 0 rgb(0 0 0 / .18), 0 14px 28px rgb(0 0 0 / .35); }
+  .dusk .hi { font-size: 13px; color: #b9b0e6; font-weight: 700; }
+  .dusk .name { font-family: Fredoka; font-size: 21px; font-weight: 600; line-height: 1.1; }
+  .dusk .chipx { display: inline-flex; align-items: center; gap: 4px; padding: 7px 11px; border-radius: 99px; background: #3a2f6e; font-weight: 800; font-size: 13px; box-shadow: inset 0 -3px 0 rgb(0 0 0 / .2); }
+  .dusk .chipx svg { color: #ffb067; }
+  .dusk .mission { padding: 16px; display: flex; gap: 14px; align-items: center; }
+  .dusk .ring { --p: 60; width: 82px; height: 82px; border-radius: 50%; flex-shrink: 0; display: grid; place-items: center;
+    background: conic-gradient(#ffa36b calc(var(--p) * 1%), #3b3270 0); box-shadow: 0 0 0 5px #231d47; }
+  .dusk .ring div { width: 62px; height: 62px; border-radius: 50%; background: #2a2352; display: grid; place-items: center; font-family: Fredoka; font-size: 18px; font-weight: 600; box-shadow: inset 0 3px 6px rgb(0 0 0 / .3); }
+  .dusk .mission small { font-size: 11px; color: #b9b0e6; font-weight: 800; letter-spacing: .06em; }
+  .dusk .mission h4 { font-family: Fredoka; font-size: 18px; font-weight: 600; line-height: 1.15; margin: 2px 0 6px; }
+  .dusk .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .dusk .st { border-radius: 20px; padding: 10px 6px; text-align: center; box-shadow: inset 0 -4px 0 rgb(0 0 0 / .18); }
+  .dusk .st b { font-family: Fredoka; font-size: 20px; display: block; line-height: 1.1; color: #1b1633; }
+  .dusk .st span { font-size: 10px; font-weight: 800; color: rgb(27 22 51 / .7); }
+  .dusk .s1 { background: #ffc09a; } .dusk .s2 { background: #9df0cf; } .dusk .s3 { background: #c8b8ff; }
+  .dusk .lists { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .dusk .lists div { padding: 12px; font-weight: 800; font-size: 13px; }
+  .dusk .lists span { display: block; font-size: 11px; color: #b9b0e6; font-weight: 700; }
+  .dusk .btn { background: linear-gradient(#ffac78, #ff7f4a); color: #fff; text-align: center; font-family: Fredoka; font-weight: 600; font-size: 18px; padding: 13px; border-radius: 22px; box-shadow: inset 0 2px 0 rgb(255 255 255 / .35), 0 6px 0 #c4542a, 0 14px 24px rgb(255 127 74 / .35); }
+  .dusk .nav { display: flex; justify-content: space-around; margin: 0 14px 14px; padding: 8px; border-radius: 24px; font-weight: 800; font-size: 11px; color: #9d93cf; position: relative; z-index: 2; }
+  .dusk .nav span { padding: 6px 10px; border-radius: 16px; }
+  .dusk .nav .on { background: #ff8a55; color: #fff; box-shadow: inset 0 -3px 0 rgb(0 0 0 / .18); }
+  .dusk .track { flex: 1; height: 12px; border-radius: 99px; background: #2a2352; box-shadow: inset 0 3px 5px rgb(0 0 0 / .35); overflow: hidden; }
+  .dusk .track i { display: block; width: 30%; height: 100%; border-radius: 99px; background: linear-gradient(#9df0cf, #4fd6a6); }
+  .dusk .play { width: 140px; height: 140px; border-radius: 50%; margin: 14px auto 0; display: grid; place-items: center;
+    background: radial-gradient(circle at 32% 28%, #c4ffe9, #4fd6a6 45%, #29a87a); box-shadow: 0 0 0 12px rgb(79 214 166 / .12), 0 10px 0 #1f8a63, 0 20px 40px rgb(79 214 166 / .35); }
+  .dusk .pill { padding: 8px 14px; border-radius: 99px; background: #2a2352; font-weight: 800; font-size: 12px; box-shadow: inset 0 -3px 0 rgb(0 0 0 / .25); }
+  .dusk .lt b { background: #2a2352; border-radius: 10px; box-shadow: inset 0 -3px 0 rgb(0 0 0 / .25); font-family: Fredoka; font-weight: 600; }
+  .dusk .lt b.x { background: #ff7aa2; color: #1b1633; text-decoration: line-through; }
+  .dusk .fb { padding: 12px; display: flex; gap: 12px; align-items: center; }
+  .dusk .fb b { font-family: Fredoka; font-size: 17px; font-weight: 600; }
+  .dusk .fb p { font-size: 12px; color: #b9b0e6; font-weight: 700; }
+
+  /* B. Pastel Glass */
+  .pglass { background: #f6f2ff; color: #241f3d; font-family: "Plus Jakarta Sans", sans-serif; }
+  .pglass .bg i:nth-child(1) { width: 230px; height: 230px; background: #ffc3a6; top: -50px; right: -70px; }
+  .pglass .bg i:nth-child(2) { width: 240px; height: 240px; background: #c7b6ff; top: 200px; left: -110px; }
+  .pglass .bg i:nth-child(3) { width: 200px; height: 200px; background: #a6f0d6; bottom: -60px; right: -40px; }
+  .pglass .gl { background: rgb(255 255 255 / .55); border: 1px solid rgb(255 255 255 / .85); backdrop-filter: blur(20px) saturate(1.4); -webkit-backdrop-filter: blur(20px) saturate(1.4); border-radius: 26px; box-shadow: 0 10px 30px rgb(110 90 200 / .12); }
+  .pglass .hi { font-size: 13px; color: #6f6890; font-weight: 500; }
+  .pglass .name { font-size: 24px; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; }
+  .pglass .av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; }
+  .pglass .goal { padding: 16px; display: flex; gap: 14px; align-items: center; }
+  .pglass .ring { width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0;
+    background: conic-gradient(from 200deg, #8f7bff, #ff9fb8, #ffb38a 60%, rgb(36 31 61 / .08) 0); }
+  .pglass .ring div { width: 68px; height: 68px; border-radius: 50%; background: #fbf9ff; display: grid; place-items: center; font-weight: 800; font-size: 17px; }
+  .pglass .week { display: flex; gap: 5px; margin-top: 8px; }
+  .pglass .week i { width: 16px; height: 16px; border-radius: 6px; background: rgb(36 31 61 / .08); }
+  .pglass .week i.f { background: linear-gradient(135deg, #8f7bff, #ff9fb8); }
+  .pglass .cont { padding: 14px 14px 14px 16px; display: flex; align-items: center; gap: 12px; }
+  .pglass .cont h4 { font-size: 16px; font-weight: 700; }
+  .pglass .mini { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: #241f3d; color: #fff; flex-shrink: 0; }
+  .pglass .chips { display: flex; gap: 6px; }
+  .pglass .chip { padding: 9px 13px; font-size: 12px; font-weight: 600; border-radius: 99px; white-space: nowrap; }
+  .pglass .btn { background: #241f3d; color: #fff; text-align: center; padding: 15px; border-radius: 99px; font-weight: 700; box-shadow: 0 12px 24px rgb(36 31 61 / .25); }
+  .pglass .nav { margin: 0 16px 14px; display: flex; justify-content: space-around; padding: 12px; font-size: 11px; font-weight: 600; color: #8a84a6; position: relative; z-index: 2; }
+  .pglass .nav .on { color: #241f3d; }
+  .pglass .seg { display: flex; gap: 3px; }
+  .pglass .seg i { flex: 1; height: 5px; border-radius: 9px; background: rgb(36 31 61 / .1); }
+  .pglass .seg i.f { background: linear-gradient(90deg, #8f7bff, #ff9fb8); }
+  .pglass .orb { width: 150px; height: 150px; border-radius: 50%; margin: 16px auto 0; display: grid; place-items: center;
+    background: radial-gradient(circle at 34% 28%, #fff 0, #d8ccff 22%, #9d86ff 55%, #ff9fb8 100%);
+    box-shadow: 0 0 0 14px rgb(255 255 255 / .45), 0 24px 50px rgb(143 123 255 / .45); }
+  .pglass .wave { display: flex; gap: 4px; justify-content: center; align-items: center; height: 34px; }
+  .pglass .wave i { width: 4px; border-radius: 4px; background: linear-gradient(#8f7bff, #ff9fb8); }
+  .pglass .lt b { background: rgb(255 255 255 / .7); border: 1px solid #fff; border-radius: 10px; font-weight: 700; box-shadow: 0 4px 10px rgb(110 90 200 / .1); }
+  .pglass .lt b.x { background: #ffd1dc; color: #c23b62; text-decoration: line-through; }
+  .pglass .fb { padding: 12px 14px; font-size: 13px; }
+  .pglass .fb b { color: #c23b62; }
+
+  /* C. Jelly Pop */
+  .jelly { background: linear-gradient(160deg, #7b5cff 0%, #ff6fae 55%, #ffb35c 100%); color: #2a1b4a; font-family: Fredoka, sans-serif; }
+  .jelly .hi { color: rgb(255 255 255 / .85); font-size: 14px; font-weight: 500; }
+  .jelly .name { color: #fff; font-size: 26px; font-weight: 700; line-height: 1; }
+  .jelly .card { background: #fff; border-radius: 30px; padding: 16px; box-shadow: 0 18px 30px rgb(60 20 90 / .25); position: relative; }
+  .jelly .peek { position: absolute; right: 16px; top: -34px; }
+  .jelly .card h4 { font-size: 20px; font-weight: 700; line-height: 1.1; }
+  .jelly .card p { font-family: Nunito; font-size: 13px; color: #7a6c96; font-weight: 700; margin-top: 2px; }
+  .jelly .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+  .jelly .st { border-radius: 18px; padding: 8px 4px; text-align: center; background: #f4efff; }
+  .jelly .st b { font-size: 19px; display: block; line-height: 1.1; }
+  .jelly .st span { font-family: Nunito; font-size: 10px; font-weight: 800; color: #7a6c96; }
+  .jelly .jb { position: relative; overflow: hidden; color: #fff; text-align: center; font-weight: 600; font-size: 18px; padding: 14px; border-radius: 24px;
+    background: linear-gradient(#9b7bff, #6a43f5); box-shadow: inset 0 -5px 0 rgb(0 0 0 / .18), 0 10px 20px rgb(106 67 245 / .45); }
+  .jelly .jb::before { content: ""; position: absolute; left: 10%; right: 10%; top: 4px; height: 40%; border-radius: 99px; background: linear-gradient(rgb(255 255 255 / .55), rgb(255 255 255 / 0)); }
+  .jelly .lists { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .jelly .li { background: rgb(255 255 255 / .92); border-radius: 22px; padding: 12px; font-weight: 600; font-size: 14px; display: flex; gap: 10px; align-items: center; }
+  .jelly .dot { width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; background: radial-gradient(circle at 32% 28%, #fff, var(--c) 45%); box-shadow: inset 0 -3px 0 rgb(0 0 0 / .12); }
+  .jelly .li span { display: block; font-family: Nunito; font-size: 10px; font-weight: 800; color: #7a6c96; }
+  .jelly .nav { display: flex; justify-content: space-around; background: #fff; padding: 12px 0 16px; font-weight: 600; font-size: 12px; color: #a296bd; border-radius: 26px 26px 0 0; position: relative; z-index: 2; }
+  .jelly .nav .on { color: #6a43f5; }
+  .jelly .bigcard { background: #fff; border-radius: 34px; flex: 1; padding: 18px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 18px 30px rgb(60 20 90 / .25); }
+  .jelly .sphere { width: 138px; height: 138px; border-radius: 50%; margin: 8px auto 0; display: grid; place-items: center; position: relative;
+    background: radial-gradient(circle at 34% 26%, #fff 0, #d6c8ff 14%, #8c6bff 48%, #5a32e8 100%); box-shadow: inset 0 -10px 18px rgb(40 10 120 / .35), 0 14px 26px rgb(106 67 245 / .45); }
+  .jelly .hint { padding: 7px 13px; border-radius: 99px; background: #f4efff; font-size: 13px; font-weight: 600; color: #6a43f5; }
+  .jelly .lt b { border-radius: 11px; background: #f4efff; font-weight: 600; box-shadow: inset 0 -3px 0 rgb(0 0 0 / .06); }
+  .jelly .lt b.x { background: linear-gradient(#ff9cc4, #ff5f9b); color: #fff; text-decoration: line-through; }
+  .jelly .say { background: #fff4e5; border-radius: 20px; padding: 10px 12px; font-size: 14px; font-weight: 600; position: relative; }
+  .jelly .say span { display: block; font-family: Nunito; font-size: 12px; font-weight: 700; color: #a0682a; }
+
+  /* D. Bento Soft */
+  .bento { background: #eceef4; color: #1d2030; font-family: Manrope, sans-serif; }
+  .bento .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .bento .t { background: #fff; border-radius: 24px; padding: 14px; box-shadow: 0 1px 0 #fff inset, 0 8px 20px rgb(30 35 60 / .07); position: relative; overflow: hidden; }
+  .bento .wide { grid-column: span 2; }
+  .bento .lab { font-size: 11px; font-weight: 700; color: #7c8197; }
+  .bento .big { font-size: 30px; font-weight: 800; letter-spacing: -.03em; line-height: 1; margin-top: 6px; }
+  .bento .peach { background: linear-gradient(150deg, #ffe0cc, #ffc3a1); }
+  .bento .lav { background: linear-gradient(150deg, #e7e0ff, #cfc2ff); }
+  .bento .mint { background: linear-gradient(150deg, #d7f7ea, #a9ecd2); }
+  .bento .drop { position: absolute; right: 10px; bottom: 10px; width: 40px; height: 48px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    background: radial-gradient(circle at 36% 30%, #fff3c4, #ffb03b 40%, #ff6a2b); box-shadow: inset -4px -6px 0 rgb(0 0 0 / .08), 0 6px 12px rgb(255 106 43 / .35); }
+  .bento .ring { width: 60px; height: 60px; border-radius: 50%; background: conic-gradient(#6c54ff 0 60%, rgb(108 84 255 / .18) 0); display: grid; place-items: center; position: absolute; right: 10px; bottom: 10px; }
+  .bento .ring div { width: 46px; height: 46px; border-radius: 50%; background: #ddd4ff; }
+  .bento .play { width: 54px; height: 54px; border-radius: 50%; background: #1d2030; color: #fff; display: grid; place-items: center; box-shadow: 0 8px 16px rgb(29 32 48 / .3); flex-shrink: 0; }
+  .bento .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 99px; background: rgb(255 255 255 / .7); margin-top: 8px; margin-right: 4px; }
+  .bento .ico { width: 34px; height: 34px; border-radius: 12px; display: grid; place-items: center; margin-bottom: 10px; }
+  .bento .nav { display: flex; justify-content: space-around; margin: 0 14px 14px; padding: 12px; background: #1d2030; color: #8f94ad; border-radius: 22px; font-weight: 700; font-size: 11px; position: relative; z-index: 2; }
+  .bento .nav .on { color: #fff; }
+  .bento .lt b { background: #f2f3f8; border-radius: 9px; font-weight: 800; }
+  .bento .lt b.x { background: #ffd9d9; color: #d9434b; text-decoration: line-through; }
+  .bento .btn { background: #1d2030; color: #fff; text-align: center; padding: 15px; border-radius: 18px; font-weight: 700; }
+  .bento .sphere { width: 110px; height: 110px; border-radius: 50%; margin: 6px auto; display: grid; place-items: center;
+    background: radial-gradient(circle at 34% 28%, #fff, #b9a8ff 30%, #6c54ff 75%); box-shadow: inset -8px -10px 0 rgb(0 0 0 / .08), 0 14px 26px rgb(108 84 255 / .35); }
+
+  /* E. Midnight Soft */
+  .mid { background: #0a0c18; color: #eef0ff; font-family: Outfit, sans-serif; }
+  .mid .bg i:nth-child(1) { width: 220px; height: 220px; background: #5b3dff; top: -90px; left: 30px; opacity: .55; }
+  .mid .bg i:nth-child(2) { width: 200px; height: 200px; background: #1fc9b4; bottom: 60px; left: -120px; opacity: .3; }
+  .mid .cd { border-radius: 24px; padding: 16px; background: linear-gradient(#141831, #141831) padding-box, linear-gradient(140deg, rgb(160 140 255 / .55), rgb(255 255 255 / .04) 40%, rgb(79 227 208 / .4)) border-box; border: 1px solid transparent; }
+  .mid .hi { color: #8d92b8; font-size: 13px; font-weight: 300; }
+  .mid .name { font-size: 23px; font-weight: 600; letter-spacing: -.01em; }
+  .mid .goal { display: flex; align-items: center; gap: 16px; }
+  .mid .ring { width: 88px; height: 88px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0;
+    background: conic-gradient(from 180deg, #4fe3d0, #8b7bff 60%, #232848 0); filter: drop-shadow(0 0 12px rgb(139 123 255 / .45)); }
+  .mid .ring div { width: 72px; height: 72px; border-radius: 50%; background: #141831; display: grid; place-items: center; font-size: 19px; font-weight: 600; }
+  .mid .week { display: flex; justify-content: space-between; margin-top: 4px; }
+  .mid .week div { display: grid; gap: 6px; justify-items: center; font-size: 10px; color: #6e7399; }
+  .mid .week i { width: 26px; height: 26px; border-radius: 9px; background: #1c2140; }
+  .mid .week i.f { background: linear-gradient(135deg, #8b7bff, #4fe3d0); box-shadow: 0 0 12px rgb(139 123 255 / .6); }
+  .mid .rowi { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #1c2140; }
+  .mid .rowi .ic { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; background: #1c2140; color: #a99dff; }
+  .mid .rowi b { font-weight: 500; flex: 1; font-size: 15px; }
+  .mid .rowi span { color: #6e7399; font-size: 12px; }
+  .mid .btn { text-align: center; padding: 15px; border-radius: 18px; font-weight: 600; color: #0a0c18; background: linear-gradient(90deg, #a99dff, #4fe3d0); box-shadow: 0 10px 30px rgb(79 227 208 / .3); }
+  .mid .nav { display: flex; justify-content: space-around; padding: 12px 0 16px; border-top: 1px solid #1c2140; font-size: 11px; color: #6e7399; position: relative; z-index: 2; }
+  .mid .nav .on { color: #eef0ff; }
+  .mid .nav .on::after { content: ""; display: block; width: 4px; height: 4px; border-radius: 50%; background: #4fe3d0; margin: 4px auto 0; box-shadow: 0 0 8px #4fe3d0; }
+  .mid .rings { width: 190px; height: 190px; margin: 10px auto 0; border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle, rgb(139 123 255 / .14) 40%, transparent 41%), radial-gradient(circle, rgb(139 123 255 / .07) 58%, transparent 59%); }
+  .mid .core { width: 104px; height: 104px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(140deg, #9a8cff, #5b3dff); box-shadow: 0 0 40px rgb(123 99 255 / .7), inset 0 2px 0 rgb(255 255 255 / .3); }
+  .mid .input { border-radius: 18px; background: #0f1226; box-shadow: inset 0 3px 8px rgb(0 0 0 / .5); border: 1px solid #232848; padding: 15px; text-align: center; font-size: 20px; letter-spacing: .06em; }
+  .mid .input s { color: #ff7ea3; }
+  .mid .fb { font-size: 13px; color: #8d92b8; text-align: center; }
+  .mid .fb b { color: #eef0ff; font-weight: 500; }
+
+  /* F. Sky Puff */
+  .sky { background: linear-gradient(170deg, #5868ff 0%, #8a6bff 55%, #c88bff 100%); color: #241c55; font-family: Nunito, sans-serif; }
+  .sky .bg i { background: #fff; opacity: .18; filter: blur(8px); }
+  .sky .bg i:nth-child(1) { width: 140px; height: 60px; top: 70px; left: -30px; border-radius: 99px; }
+  .sky .bg i:nth-child(2) { width: 120px; height: 50px; top: 140px; right: -20px; border-radius: 99px; }
+  .sky .hi { color: rgb(255 255 255 / .8); font-weight: 700; font-size: 14px; }
+  .sky .name { color: #fff; font-weight: 900; font-size: 26px; line-height: 1; }
+  .sky .puff { background: #fff; border-radius: 30px; padding: 16px; box-shadow: 0 6px 0 #d9d4ff, 0 20px 34px rgb(40 30 120 / .3); }
+  .sky .hero { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding-top: 22px; position: relative; margin-top: 30px; }
+  .sky .hero .blob { position: absolute; top: -40px; }
+  .sky .hero h4 { font-weight: 900; font-size: 19px; margin-top: 12px; }
+  .sky .hero p { font-size: 13px; color: #7d76a8; font-weight: 700; }
+  .sky .stats { display: flex; justify-content: space-around; width: 100%; margin-top: 6px; }
+  .sky .stats div { text-align: center; }
+  .sky .stats b { display: block; font-size: 20px; font-weight: 900; }
+  .sky .stats span { font-size: 10px; color: #7d76a8; font-weight: 800; }
+  .sky .btn { background: #ffd447; color: #3a2a00; text-align: center; font-weight: 900; font-size: 18px; padding: 14px; border-radius: 24px; box-shadow: inset 0 2px 0 rgb(255 255 255 / .5), 0 6px 0 #d9a400, 0 16px 26px rgb(40 30 120 / .3); }
+  .sky .chips { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+  .sky .chip { background: rgb(255 255 255 / .22); color: #fff; padding: 8px 13px; border-radius: 99px; font-weight: 800; font-size: 12px; }
+  .sky .nav { display: flex; justify-content: space-around; margin: 0 14px 14px; padding: 12px; background: #fff; border-radius: 26px; font-weight: 800; font-size: 11px; color: #a39dcc; box-shadow: 0 5px 0 #d9d4ff; position: relative; z-index: 2; }
+  .sky .nav .on { color: #5868ff; }
+  .sky .playp { width: 128px; height: 128px; border-radius: 50%; margin: 6px auto 0; display: grid; place-items: center; background: radial-gradient(circle at 34% 28%, #a8b4ff, #5868ff 60%); box-shadow: 0 8px 0 #3e4bd6, 0 18px 30px rgb(88 104 255 / .4); }
+  .sky .lt b { background: #f1efff; border-radius: 11px; font-weight: 900; box-shadow: inset 0 -3px 0 #ddd8ff; }
+  .sky .lt b.x { background: #ff8fb0; color: #fff; box-shadow: inset 0 -3px 0 #e2678d; text-decoration: line-through; }
+  .sky .bubble { position: relative; background: #fff; border-radius: 20px; padding: 10px 14px; font-weight: 800; font-size: 14px; box-shadow: 0 4px 0 #d9d4ff; }
+  .sky .bubble span { display: block; font-weight: 700; font-size: 12px; color: #7d76a8; }
+  .sky .bubble::after { content: ""; position: absolute; left: -7px; bottom: 14px; border: 8px solid transparent; border-right-color: #fff; border-left: 0; }
+</style>
+</head>
+<body>
+  <div class="page-head">
+    <h1>WordWise — soft &amp; glow, six more</h1>
+    <p>All six mix what you liked in Soft Clay (squishy, friendly, mascot) and Aurora Glass (glow, glass, night colors). Left: Home. Right: Practice after a mistake.</p>
+  </div>
+
+  <!-- A -->
+  <section class="theme" id="dusk">
+    <div class="phone dusk">
+      <div class="bg"><i></i><i></i></div>
+      <div class="status"><span>9:41</span><span class="notch"></span><span>100%</span></div>
+      <div class="scr">
+        <div class="row between">
+          <div class="row" style="gap:10px"><div class="blob" style="--s:44px"><i class="e l"></i><i class="e r"></i><i class="m"></i><i class="ck l"></i><i class="ck r"></i></div><div><div class="hi">Hey Kaizen</div><div class="name">Ready to spell?</div></div></div>
+        </div>
+        <div class="row"><span class="chipx"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1 3.5-1.5 5-1.5 8 0 1.5 1 2.5 2 2.5 1.6 0 2.5-1.3 2.5-3 2 1.6 3 4 3 6 0 3.9-2.9 6.5-6.5 6.5S5 19.4 5 15.5C5 10 10 8 12 2z"/></svg>12 days</span><span class="chipx">340 XP</span></div>
+        <div class="clay mission">
+          <div class="ring" style="--p:60"><div>6/10</div></div>
+          <div><small>TODAY'S MISSION</small><h4>Commonly misspelled</h4><span class="chipx" style="font-size:11px;padding:5px 9px">4 words left</span></div>
+        </div>
+        <div class="stats"><div class="st s1"><b>12</b><span>streak</span></div><div class="st s2"><b>81%</b><span>accuracy</span></div><div class="st s3"><b>48</b><span>mastered</span></div></div>
+        <div class="lists"><div class="clay">My mistakes<span>8 words</span></div><div class="clay">My words<span>12 words</span></div></div>
+        <div class="grow"></div>
+        <div class="btn">Start practice</div>
+      </div>
+      <div class="clay nav"><span class="on">Home</span><span>Practice</span><span>Words</span><span>Me</span></div>
+    </div>
+    <div class="phone dusk">
+      <div class="bg"><i></i><i></i></div>
+      <div class="status"><span>9:41</span><span class="notch"></span><span>100%</span></div>
+      <div class="scr">
+        <div class="row"><b style="font-size:18px">&times;</b><div class="track"><i></i></div><span class="chipx">&#9829; 4</span></div>
+        <div class="play"><svg width="56" height="56" viewBox="0 0 24 24" fill="#fff"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg></div>
+        <div class="row" style="justify-content:center;margin-top:8px"><span class="pill">Slower</span><span class="pill">Sentence</span><span class="pill">Meaning</span></div>
+        <div class="grow"></div>
+        <div class="lt"><b>n</b><b>e</b><b>c</b><b class="x">c</b><b>e</b><b>s</b><b>s</b><b>a</b><b>r</b><b>y</b></div>
+        <div class="clay fb"><div class="blob" style="--s:42px"><i class="e l"></i><i class="e r"></i><i class="m"></i><i class="ck l"></i><i class="ck r"></i></div><div><b>So close!</b><p>One c, two s &mdash; necessary</p></div></div>
+        <div class="btn">Next word</div>
+      </div>
+    </div>
+    <div class="info">
+      <div class="num">A</div>
+      <h2>Dusk Clay</h2>
+      <p>Soft Clay moved into night colors. Squishy 3D buttons and pastel stat bubbles sit on a deep purple background with a soft glow. The mascot stays, so it's still friendly, but it feels more grown-up than the light clay.</p>
+      <div class="mix">5 clay shapes + 2 night glow</div>
+      <div class="fonts">Fredoka + Nunito</div>
+      <div class="swatches"><i style="background:#1b1633"></i><i style="background:#2a2352"></i><i style="background:#ff8a55"></i><i style="background:#4fd6a6"></i><i style="background:#c8b8ff"></i></div>
+    </div>
+  </section>
+
+  <!-- B -->
+  <section class="theme" id="pglass">
+    <div class="phone pglass">
+      <div class="bg"><i></i><i></i><i></i></div>
+      <div class="status"><span>9:41</span><span class="notch"></span><span>100%</span></div>
+      <div class="scr">
+        <div class="row between"><div><div class="hi">Good morning,</div><div class="name">Kaizen</div></div><div class="gl av">K</div></div>
+        <div class="gl goal">
+          <div class="ring"><div>6/10</div></div>
+          <div><div class="hi">Daily goal</div><div style="font-weight:700;font-size:15px">4 words to go</div><div class="week"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i></i><i></i></div></div>
+        </div>
+        <div class="gl cont"><div style="flex:1"><div class="hi">Continue</div><h4>Commonly misspelled</h4><div class="hi" style="font-size:12px">10 words &middot; about 4 min</div></div><div class="mini"><svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M7 4.5v15l12-7.5z"/></svg></div></div>
+        <div class="chips"><span class="gl chip">My mistakes &middot; 8</span><span class="gl chip">Hard</span><span class="gl chip">Import</span></div>
+        <div class="grow"></div>
+        <div class="btn">Start dictation</div>
+      </div>
+      <div class="gl nav"><span class="on">Home</span><span>Practice</span><span>Words</span><span>Stats</span></div>
+    </div>
+    <div class="phone pglass">
+      <div class="bg"><i></i><i></i><i></i></div>
+      <div class="status"><span>9:41</span><span class="notch"></span><span>100%</span></div>
+      <div class="scr center">
+        <div class="row between" style="width:100%"><span style="font-size:18px">&times;</span><span class="hi">Word 3 of 10</span><span style="width:12px"></span></div>
+        <div class="seg" style="width:100%"><i class="f"></i><i class="f"></i><i class="f"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="orb"><svg width="52" height="52" viewBox="0 0 24 24" fill="#fff"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg></div>
+        <div class="wave"><i style="height:8px"></i><i style="height:18px"></i><i style="height:28px"></i><i style="height:14px"></i><i style="height:24px"></i><i style="height:10px"></i><i style="height:20px"></i></div>
+        <div class="grow"></div>
+        <div class="lt"><b>n</b><b>e</b><b>c</b><b class="x">c</b><b>e</b><b>s</b><b>s</b><b>a</b><b>r</b><b>y</b></div>
+        <div class="gl fb" style="width:100%">Almost &mdash; <b>one c</b>, two s. <span style="font-weight:700">necessary</span></div>
+        <div class="btn" style="width:100%">Next word</div>
+      </div>
+    </div>
+    <div class="info">
+      <div class="num">B</div>
+      <h2>Pastel Glass</h2>
+      <p>The light-mode version of Aurora Glass. Frosted white glass over soft peach, lilac and mint glows, with a dark pill button for contrast. Cleaner and calmer than Aurora, with the premium iPhone feel.</p>
+      <div class="mix">2 glass + 5 soft pastels</div>
+      <div class="fonts">Plus Jakarta Sans</div>
+      <div class="swatches"><i style="background:#f6f2ff"></i><i style="background:#c7b6ff"></i><i style="background:#ffc3a6"></i><i style="background:#a6f0d6"></i><i style="background:#241f3d"></i></div>
+    </div>
+  </section>
+
+  <!-- C -->
+  <section class="theme" id="jelly">
+    <div class="phone jelly">
+      <div class="status" style="color:#fff"><span>9:41</span><span class="notch"></span><span>100%</span></div>
+      <div class="scr">
+        <div><div class="hi">Good morning</div><div class="name">Kaizen</div></div>
+        <div class="card" style="margin-top:30px">
+          <div class="peek"><div class="blob" style="--s:62px;--c:#ffb35c"><i class="e l"></i><i class="e r"></i><i class="m"></i><i class="ck l"></i><i class="ck r"></i></div></div>
+          <h4>10 words today</h4>
+          <p>Commonly misspelled &middot; 4 min</p>
+          <div class="stats"><div class="st"><b>12</b><span>streak</span></div><div class="st"><b>6/10</b><span>today</span></div><div class="st"><b>81%</b><span>accuracy</span></div></div>
+        </div>
+        <div class="lists">
+          <div class="li"><span class="dot" style="--c:#ff6fae"></span><div>Mistakes<span>8 words</span></div></div>
+          <div class="li"><span class="dot" style="--c:#4fd6a6"></span><div>My words<span>12 words</span></div></div>
+        </div>
+        <div class="grow"></div>
+        <div class="jb">Let's spell!</div>
+      </div>
+      <div class="nav"><span class="on">Home</span><span>Practice</span><span>Words</span><span>Me</span></div>
+    </div>
+    <div class="phone jelly">
+      <div class="status" style="color:#fff"><span>9:41</span><span class="notch"></span><span>100%</span></div>
+      <div class="scr">
+        <div class="row between" style="color:#fff;font-weight:600"><span>&times;</span><span>3 of 10</span><span>&#9829; 4</span></div>
+        <div class="bigcard">
+          <div class="sphere"><svg width="54" height="54" viewBox="0 0 24 24" fill="#fff"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg></div>
+          <div class="row" style="justify-content:center"><span class="hint">Slower</span><span class="hint">Sentence</span></div>
+          <div class="grow"></div>
+          <div class="lt"><b>n</b><b>e</b><b>c</b><b class="x">c</b><b>e</b><b>s</b><b>s</b><b>a</b><b>r</b><b>y</b></div>
+          <div class="row" style="gap:10px"><div class="blob" style="--s:44px;--c:#ffb35c"><i class="e l"></i><i class="e r"></i><i class="m"></i><i class="ck l"></i><i class="ck r"></i></div><div class="say">Oops, one c too many!<span>necessary = 1 c, 2 s</span></div></div>
+          <div class="jb">Next word</div>
+        </div>
+      </div>
+    </div>
+    <div class="info">
+      <div class="num">C</div>
+      <h2>Jelly Pop</h2>
+      <p>The most playful one. A bright purple-to-orange background, glossy jelly buttons with a shine on top, white cards, and a mascot peeking over the card. Energetic and colorful, like a top game app.</p>
+      <div class="mix">5 mascot + bold glow colors</div>
+      <div class="fonts">Fredoka + Nunito</div>
+      <div class="swatches"><i style="background:#7b5cff"></i><i style="background:#ff6fae"></i><i style="background:#ffb35c"></i><i style="background:#fff"></i><i style="background:#2a1b4a"></i></div>
+    </div>
+  </section>
+
+  <!-- D -->
+  <section class="theme" id="bento">
+    <div class="phone bento">
+      <div class="status"><span>9:41</span><span class="notch"></span><span>100%</span></div>
+      <div class="scr">
+        <div class="row between"><div><div class="lab">TUESDAY 27</div><div style="font-size:22px;font-weight:800;letter-spacing:-.02em">Hi, Kaizen</div></div><div class="t" style="padding:0;width:40px;height:40px;border-radius:14px;display:grid;place-items:center;font-weight:800">K</div></div>
+        <div class="grid">
+          <div class="t peach" style="height:118px"><div class="lab">Streak</div><div class="big">12</div><div class="lab">days</div><div class="drop"></div></div>
+          <div class="t lav" style="height:118px"><div class="lab">Today</div><div class="big">6<span style="font-size:16px">/10</span></div><div class="ring"><div></div></div></div>
+          <div class="t mint wide"><div class="row between"><div><div class="lab">Continue</div><div style="font-size:17px;font-weight:800;margin-top:2px">Commonly misspelled</div><span class="tag">10 words</span><span class="tag">shuffle</span></div><div class="play"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M7 4.5v15l12-7.5z"/></svg></div></div></div>
+          <div class="t"><div class="ico" style="background:#ffe1e3;color:#d9434b"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></div><b style="font-size:14px">Mistakes</b><div class="lab">8 words</div></div>
+          <div class="t"><div class="ico" style="background:#e1ecff;color:#3b6fe0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div><b style="font-size:14px">Import</b><div class="lab">paste a list</div></div>
+        </div>
+      </div>
+      <div class="nav"><span class="on">Home</span><span>Practice</span><span>Words</span><span>Stats</span></div>
+    </div>
+    <div class="phone bento">
+      <div class="status"><span>9:41</span><span class="notch"></span><span>100%</span></div>
+      <div class="scr">
+        <div class="row between"><b>&times;</b><span class="lab">WORD 3 OF 10</span><span class="lab">&#9829; 4</span></div>
+        <div class="t lav" style="text-align:center"><div class="sphere"><svg width="46" height="46" viewBox="0 0 24 24" fill="#fff"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg></div><span class="tag">Slower</span><span class="tag">Sentence</span><span class="tag">Meaning</span></div>
+        <div class="grid">
+          <div class="t wide"><div class="lab" style="margin-bottom:8px">YOUR SPELLING</div><div class="lt"><b>n</b><b>e</b><b>c</b><b class="x">c</b><b>e</b><b>s</b><b>s</b><b>a</b><b>r</b><b>y</b></div></div>
+          <div class="t peach"><div class="lab">Fix</div><div style="font-weight:800;font-size:15px;margin-top:4px">One c,<br>two s</div></div>
+          <div class="t mint"><div class="lab">Meaning</div><div style="font-weight:700;font-size:12px;margin-top:4px">needed to get a result</div></div>
+        </div>
+        <div class="grow"></div>
+        <div class="btn">Next word</div>
+      </div>
+    </div>
+    <div class="info">
+      <div class="num">D</div>
+      <h2>Bento Soft</h2>
+      <p>A grid of soft tiles, like iPhone widgets. Each tile does one job: streak, today's goal, continue, mistakes, import. There are small 3D touches (a glossy flame, a glossy play ball) on a light, tidy background. The most organised option.</p>
+      <div class="mix">5 soft 3D + 2 gradients, in widgets</div>
+      <div class="fonts">Manrope</div>
+      <div class="swatches"><i style="background:#eceef4"></i><i style="background:#ffc3a1"></i><i style="background:#cfc2ff"></i><i style="background:#a9ecd2"></i><i style="background:#1d2030"></i></div>
+    </div>
+  </section>
+
+  <!-- E -->
+  <section class="theme" id="mid">
+    <div class="phone mid">
+      <div class="bg"><i></i><i></i></div>
+      <div class="status"><span>9:41</span><span class="notch"></span><span>100%</span></div>
+      <div class="scr">
+        <div><div class="hi">Tuesday, good morning</div><div class="name">Kaizen</div></div>
+        <div class="cd goal"><div class="ring"><div>6/10</div></div><div><div class="hi">Daily goal</div><div style="font-size:16px;font-weight:500">4 words to go</div><div class="hi" style="margin-top:4px">12-day streak</div></div></div>
+        <div class="week"><div><i class="f"></i>M</div><div><i class="f"></i>T</div><div><i class="f"></i>W</div><div><i class="f"></i>T</div><div><i class="f"></i>F</div><div><i></i>S</div><div><i></i>S</div></div>
+        <div>
+          <div class="rowi"><span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l12-7.5z"/></svg></span><b>Commonly misspelled</b><span>25</span></div>
+          <div class="rowi"><span class="ic">!</span><b>My mistakes</b><span>8</span></div>
+          <div class="rowi"><span class="ic">+</span><b>My own words</b><span>12</span></div>
+        </div>
+        <div class="grow"></div>
+        <div class="btn">Start dictation</div>
+      </div>
+      <div class="nav"><span class="on">Home</span><span>Practice</span><span>Words</span><span>Stats</span></div>
+    </div>
+    <div class="phone mid">
+      <div class="bg"><i></i><i></i></div>
+      <div class="status"><span>9:41</span><span class="notch"></span><span>100%</span></div>
+      <div class="scr">
+        <div class="row between"><span>&times;</span><span class="hi">3 / 10</span><span class="hi">Slower</span></div>
+        <div class="rings"><div class="core"><svg width="44" height="44" viewBox="0 0 24 24" fill="#fff"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg></div></div>
+        <div class="hi" style="text-align:center">Tap to hear it again</div>
+        <div class="grow"></div>
+        <div class="input">nec<s>c</s>essary</div>
+        <div class="fb">Extra <b>c</b>. It's <b>necessary</b> &mdash; one collar, two sleeves.</div>
+        <div class="btn">Next word</div>
+      </div>
+    </div>
+    <div class="info">
+      <div class="num">E</div>
+      <h2>Midnight Soft</h2>
+      <p>Aurora Glass, cleaned up. Darker and sharper, with glowing gradient borders on cards, a glowing week strip and a calm play button inside soft rings. Less blur and better contrast, so it reads clearly. The most "premium dark" option.</p>
+      <div class="mix">2 glow, refined + 5 softness</div>
+      <div class="fonts">Outfit</div>
+      <div class="swatches"><i style="background:#0a0c18"></i><i style="background:#141831"></i><i style="background:#8b7bff"></i><i style="background:#4fe3d0"></i><i style="background:#ff7ea3"></i></div>
+    </div>
+  </section>
+
+  <!-- F -->
+  <section class="theme" id="sky">
+    <div class="phone sky">
+      <div class="bg"><i></i><i></i></div>
+      <div class="status" style="color:#fff"><span>9:41</span><span class="notch"></span><span>100%</span></div>
+      <div class="scr">
+        <div><div class="hi">Good morning</div><div class="name">Kaizen</div></div>
+        <div class="puff hero">
+          <div class="blob" style="--s:72px;--c:#ffb35c"><i class="e l"></i><i class="e r"></i><i class="m"></i><i class="ck l"></i><i class="ck r"></i></div>
+          <h4>Ready for 10 words?</h4>
+          <p>Commonly misspelled &middot; 4 min</p>
+          <div class="stats"><div><b>12</b><span>day streak</span></div><div><b>6/10</b><span>today</span></div><div><b>81%</b><span>accuracy</span></div></div>
+        </div>
+        <div class="chips"><span class="chip">My mistakes</span><span class="chip">My words</span><span class="chip">Import</span></div>
+        <div class="grow"></div>
+        <div class="btn">Start!</div>
+      </div>
+      <div class="nav"><span class="on">Home</span><span>Practice</span><span>Words</span><span>Me</span></div>
+    </div>
+    <div class="phone sky">
+      <div class="bg"><i></i><i></i></div>
+      <div class="status" style="color:#fff"><span>9:41</span><span class="notch"></span><span>100%</span></div>
+      <div class="scr">
+        <div class="row between" style="color:#fff;font-weight:900"><span>&times;</span><span>3 of 10</span><span>&#9829; 4</span></div>
+        <div class="puff" style="display:flex;flex-direction:column;gap:12px;align-items:center">
+          <div class="playp"><svg width="50" height="50" viewBox="0 0 24 24" fill="#fff"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg></div>
+          <div class="row"><span class="chip" style="background:#f1efff;color:#5868ff">Slower</span><span class="chip" style="background:#f1efff;color:#5868ff">Sentence</span></div>
+          <div class="lt"><b>n</b><b>e</b><b>c</b><b class="x">c</b><b>e</b><b>s</b><b>s</b><b>a</b><b>r</b><b>y</b></div>
+        </div>
+        <div class="grow"></div>
+        <div class="row" style="gap:14px"><div class="blob" style="--s:50px;--c:#ffb35c"><i class="e l"></i><i class="e r"></i><i class="m"></i><i class="ck l"></i><i class="ck r"></i></div><div class="bubble">So close!<span>Just one c in necessary.</span></div></div>
+        <div class="btn">Next word</div>
+      </div>
+    </div>
+    <div class="info">
+      <div class="num">F</div>
+      <h2>Sky Puff</h2>
+      <p>A bright blue-violet sky with puffy white cards and a big yellow button. The mascot sits on top of the main card and talks to you in speech bubbles. Cheerful and simple, closest to Duolingo or Headspace.</p>
+      <div class="mix">5 puffy + 2 color glow</div>
+      <div class="fonts">Nunito</div>
+      <div class="swatches"><i style="background:#5868ff"></i><i style="background:#8a6bff"></i><i style="background:#fff"></i><i style="background:#ffd447"></i><i style="background:#ffb35c"></i></div>
+    </div>
+  </section>
+
+  <script>
+    var only = new URLSearchParams(location.search).get('only');
+    if (only) document.querySelectorAll('section.theme, .page-head').forEach(function (el) { if (el.id !== only) el.style.display = 'none'; });
+  </script>
+</body>
+</html>
