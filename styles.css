@@ -713,7 +713,6 @@ body.in-play { overflow: hidden; --nav-h: 0px; }
 .wave i { width: 4px; height: var(--h); border-radius: 4px; background: var(--grad); opacity: .5; }
 .play.speaking .wave i { opacity: .9; animation: wave .9s ease-in-out infinite; animation-delay: calc(var(--i) * -.09s); }
 @keyframes wave { 0%, 100% { transform: scaleY(.45); } 50% { transform: scaleY(1); } }
-.hint-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; margin-top: 14px; }
 .hint {
   font: inherit;
   font-size: .85rem;
@@ -727,12 +726,29 @@ body.in-play { overflow: hidden; --nav-h: 0px; }
 }
 .hint:hover { border-color: var(--accent); color: var(--accent); }
 
-/* Typing: the player shrinks into a row */
-.play .mini { display: none; align-items: center; gap: 12px; margin: 16px 0 0; padding: 12px; border-radius: 20px; flex: none; }
-.play[data-state="typing"] .mini { display: flex; }
+/* Typing: tiles above the in-app keyboard */
+.speller { flex: 1; min-height: 0; display: none; place-items: center; align-content: center; gap: 14px; text-align: center; }
+.play[data-state="typing"] .speller { display: grid; }
+.speller .tiles { width: 100%; padding: 0 4px; }
+.speller .tiles b { flex-basis: 38px; height: 50px; border-radius: 12px; font-size: 25px; }
+.speller .tiles.long b { height: 40px; border-radius: 10px; font-size: 19px; }
+
+.kb {
+  flex: none;
+  display: grid;
+  gap: 9px;
+  margin: 10px -18px calc(-18px - env(safe-area-inset-bottom));
+  padding: 10px 4px calc(12px + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  border-top: 1px solid var(--border);
+}
+.kb-tools { display: flex; align-items: center; gap: 6px; padding: 0 6px 3px; }
+.kb-tools .hint { padding: 7px 11px; font-size: 13px; }
+.kb-skip { margin-left: auto; padding: 7px 6px; border: 0; background: none; color: var(--muted); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
+.kb-skip:hover { color: var(--accent); }
 .mini-orb {
-  width: 52px;
-  height: 52px;
+  width: 40px;
+  height: 40px;
   flex: none;
   display: grid;
   place-items: center;
@@ -741,52 +757,36 @@ body.in-play { overflow: hidden; --nav-h: 0px; }
   color: #fff;
   cursor: pointer;
   background: radial-gradient(circle at 35% 30%, #b3a8ff, #7b66ff 55%, #5a45e6);
-  box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 14%, transparent), 0 8px 20px rgb(124 104 255 / .45);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 14%, transparent), 0 6px 16px rgb(124 104 255 / .4);
 }
-.mini-text { flex: 1; min-width: 0; line-height: 1.3; }
-.mini-text b { display: block; font-size: 15px; font-weight: 600; }
-.mini-text span { font-size: 12px; color: var(--muted); }
-.mini .hint { padding: 7px 11px; font-size: 13px; }
-
-.answer-form { display: flex; flex-direction: column; flex: none; }
-.play[data-state="typing"] .answer-form { flex: 1; min-height: 0; }
-.speller {
-  position: relative;
+.kb-keys { display: grid; gap: 9px; }
+.kb-row { display: flex; justify-content: center; gap: 5px; }
+.kb .k {
+  flex: 0 0 calc((100% - 45px) / 10);
+  max-width: 46px;
+  height: 46px;
   display: grid;
   place-items: center;
-  align-content: center;
-  gap: 14px;
-  height: 64px;
-  border-radius: 18px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  font-size: 22px;
-  font-weight: 500;
-  color: var(--muted);
-  cursor: text;
-}
-.speller:focus-within { border-color: var(--accent); box-shadow: var(--focus); }
-.play[data-state="typing"] .speller { flex: 1; height: auto; background: transparent; border-color: transparent; box-shadow: none; }
-.speller .lab, .speller .cap { display: none; margin: 0; }
-.play[data-state="typing"] .speller .lab, .play[data-state="typing"] .speller .cap { display: block; }
-.speller .tiles { display: none; width: 100%; padding: 0 10px; }
-.speller:not(.empty) .tiles, .speller:focus-within .tiles { display: flex; }
-.speller:not(.empty) .speller-ph, .speller:focus-within .speller-ph { display: none; }
-.play[data-state="typing"] .speller-ph { display: none; }
-.speller input {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
   padding: 0;
   border: 0;
-  opacity: 0;
-  font-size: 16px;
-  caret-color: transparent;
-  cursor: text;
+  border-bottom: 2px solid var(--tile-edge);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 20px;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform .06s, background .1s;
 }
-
+.kb .k:active { transform: scale(.94); background: var(--accent-soft); }
+.kb .k.mark { color: var(--muted); }
+.kb .k.back { flex: 0 0 96px; max-width: none; color: var(--muted); }
+.kb .k.go { flex: 1 1 auto; max-width: none; border-bottom-color: transparent; background: var(--grad); color: var(--on-grad); font-size: 16px; font-weight: 600; }
 .play-actions { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; margin-top: 10px; flex: none; }
 .play-actions .btn, .btn.full { padding-block: 15px; font-size: 16px; border-radius: 16px; }
 .btn.full { width: 100%; }

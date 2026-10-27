@@ -446,7 +446,7 @@ let selectedList = store.get('selectedList', 'misspelled');
 if (!LIST_KEYS.includes(selectedList)) selectedList = 'easy';
 let selectedCount = store.get('count', 10);
 
-const session = { words: [], index: 0, results: [], checked: false, label: '', started: 0 };
+const session = { words: [], index: 0, results: [], checked: false, label: '', started: 0, typed: '' };
 const current = () => session.words[session.index];
 const parseCustom = text => [...new Set(text.split(/[\n,;]+/).map(w => w.trim()).filter(Boolean))];
 
@@ -558,29 +558,25 @@ $('#import-file').addEventListener('change', e => {
 
 const finePointer = matchMedia('(pointer: fine)').matches;
 const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four'];
-const answerInput = $('#answer');
+const KEY_ROWS = ['qwertyuiop', 'asdfghjkl', "'zxcvbnm-"];
+const MAX_TYPED = 40;
+const BACKSPACE_ICON = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 5H9l-6 7 6 7h12z"/><path d="m17 9-6 6M11 9l6 6"/></svg>';
 
 const tile = (letter, cls = '') => `<b${cls ? ` class="${cls}"` : ''}>${letter === ' ' ? '&nbsp;' : esc(letter)}</b>`;
 
-// iOS keeps the layout viewport when the keyboard opens, so size the screen to what is visible.
-function fitPlay() {
-  const vv = window.visualViewport;
-  $$('.play').forEach(el => {
-    el.style.height = vv ? `${vv.height}px` : '';
-    el.style.top = vv ? `${vv.offsetTop}px` : '';
-  });
-}
-if (window.visualViewport) {
-  visualViewport.addEventListener('resize', fitPlay);
-  visualViewport.addEventListener('scroll', fitPlay);
-}
+$('#kb-keys').innerHTML = KEY_ROWS.map(row => `<div class="kb-row">${[...row].map(k => {
+  const mark = !/[a-z]/.test(k);
+  return `<button class="k${mark ? ' mark' : ''}" type="button" data-key="${esc(k)}" aria-label="${k === "'" ? 'Apostrophe' : k === '-' ? 'Hyphen' : k}">${esc(k)}</button>`;
+}).join('')}</div>`).join('') + `<div class="kb-row">
+    <button class="k back" type="button" data-key="Backspace" aria-label="Delete letter">${BACKSPACE_ICON}</button>
+    <button id="check" class="k go" type="button">Check</button>
+  </div>`;
 
 function openPlay(id) {
   $('#session').hidden = id !== 'session';
   $('#summary').hidden = id !== 'summary';
   document.body.classList.toggle('in-play', Boolean(id));
   closePopovers();
-  fitPlay();
 }
 
 const setState = state => { $('#session').dataset.state = state; };
@@ -617,17 +613,27 @@ function renderSegs() {
 }
 
 function renderTyped() {
-  const letters = [...answerInput.value];
-  const caret = document.activeElement === answerInput ? '<b class="caret"></b>' : '';
-  $('#typed').classList.toggle('long', letters.length > 11);
-  $('#typed').innerHTML = letters.map(l => tile(l)).join('') + caret;
-  $('.speller').classList.toggle('empty', !letters.length);
+  const letters = [...session.typed];
+  $('#typed').classList.toggle('long', letters.length > 9);
+  $('#typed').innerHTML = letters.map(l => tile(l)).join('') + '<b class="caret"></b>';
+  if (!session.checked) setState(letters.length ? 'typing' : 'listen');
 }
 
-function updateAskMode() {
+function typeKey(key) {
   if (session.checked) return;
-  const focused = document.activeElement === answerInput;
-  setState(answerInput.value || (focused && !finePointer) ? 'typing' : 'listen');
+  if (key === 'Backspace') session.typed = session.typed.slice(0, -1);
+  else if (session.typed.length < MAX_TYPED) session.typed += key;
+  renderTyped();
+}
+
+function checkAnswer() {
+  if (session.checked) return;
+  const typed = session.typed.trim();
+  if (!typed) {
+    toast('Type the word with the letter keys first.');
+    return;
+  }
+  record(current(), typed);
 }
 
 function showWord() {
@@ -635,23 +641,31 @@ function showWord() {
   const word = current();
   $('#progress-text').textContent = `Word ${session.index + 1} of ${session.words.length}`;
   renderSegs();
-  answerInput.value = '';
-  answerInput.disabled = false;
-  setState('listen');
-  if (finePointer) answerInput.focus();
+  session.typed = '';
   renderTyped();
-  updateAskMode();
   setTimeout(() => { if (current() === word && !session.checked) speak(word); }, 300);
   lookup(word).catch(() => {});
 }
 
-['input', 'focus', 'blur'].forEach(type => answerInput.addEventListener(type, () => {
-  renderTyped();
-  updateAskMode();
-}));
+$('#kb-keys').addEventListener('click', e => {
+  const key = e.target.closest('[data-key]');
+  if (key) typeKey(key.dataset.key);
+});
+$('#check').addEventListener('click', checkAnswer);
 
-// Keep the keyboard open when tapping the player or hint buttons while typing.
-$('.ask').addEventListener('mousedown', e => { if (e.target.closest('button')) e.preventDefault(); });
+// A physical keyboard (computer or tablet) types into the same tiles.
+document.addEventListener('keydown', e => {
+  if ($('#session').hidden || !$('#sheet-wrap').hidden || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.target.closest('input, select, textarea')) return;
+  const asking = !session.checked;
+  if (asking && /^[a-z'-]$/i.test(e.key)) typeKey(e.key.toLowerCase());
+  else if (asking && e.key === 'Backspace') typeKey('Backspace');
+  else if (e.key === 'Enter' && !e.target.closest('button')) {
+    if (asking) checkAnswer();
+    else next();
+  } else return;
+  e.preventDefault();
+});
 
 async function examplesFor(word) {
   const entries = await lookup(word);
@@ -687,7 +701,6 @@ async function speakMeaning() {
 $('#play').addEventListener('click', () => speak(current()));
 $('#play-mini').addEventListener('click', () => speak(current()));
 $('#play-slow').addEventListener('click', () => speak(current(), 0.55));
-$('#play-slow-mini').addEventListener('click', () => speak(current(), 0.55));
 $('#play-sentence').addEventListener('click', speakSentence);
 $('#play-meaning').addEventListener('click', speakMeaning);
 
@@ -843,10 +856,6 @@ async function record(word, typed) {
   session.checked = true;
   updateMistakes(word, correct);
 
-  // Emptied before the field hides so browsers don't offer to save the answer as a password.
-  answerInput.value = '';
-  answerInput.disabled = true;
-  answerInput.blur();
   renderSegs();
   const last = index + 1 >= session.words.length;
   $$('.next-btn').forEach(b => (b.textContent = last ? 'See results' : 'Next word'));
@@ -869,14 +878,6 @@ function next() {
   if (session.index < session.words.length) showWord();
   else finish();
 }
-
-$('#answer-form').addEventListener('submit', e => {
-  e.preventDefault();
-  if (session.checked) return;
-  const typed = answerInput.value.trim();
-  if (!typed) return answerInput.focus();
-  record(current(), typed);
-});
 
 $('#skip').addEventListener('click', () => { if (!session.checked) record(current(), ''); });
 $('#ok-next').addEventListener('click', next);
