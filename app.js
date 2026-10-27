@@ -1032,11 +1032,10 @@ function showCorrect(word, secs) {
   void burst.offsetWidth;
   burst.classList.add('go');
 
-  $('#ok-word').textContent = word;
+  $('#ok-word').innerHTML = `${esc(word)}<button class="say say-big" type="button" data-speak="${esc(word)}" aria-label="Say the word" title="Say the word">${SPEAKER_ICON}</button>`;
   $('#ok-tiles').classList.toggle('long', word.length > 11);
   $('#ok-tiles').innerHTML = [...word].map((l, i) => `<b class="good" style="--i:${i}">${l === ' ' ? '&nbsp;' : esc(l)}</b>`).join('');
-  $('#ok-phon').innerHTML = `<button class="chip" type="button" data-speak="${esc(word)}">Play</button>
-    <button class="chip" type="button" data-sheet-word="${esc(word)}">Meaning</button>`;
+  $('#ok-phon').innerHTML = `<button class="chip" type="button" data-sheet-word="${esc(word)}">Meaning</button>`;
   $('#ok-pos').hidden = true;
   $('#ok-def').textContent = 'Loading meaning\u2026';
   $('#ok-ex').hidden = true;
@@ -1048,7 +1047,7 @@ function showCorrect(word, secs) {
 function showWrong(word, typed) {
   setState('bad');
   $('#bad-title').textContent = typed ? 'Not quite' : 'Skipped';
-  $('#bad-word').textContent = word;
+  $('#bad-word').innerHTML = spoken(word);
   $('#bad-typed-wrap').hidden = !typed;
   const ops = typed ? alignLetters(typed, word) : [];
   const typedRow = ops.map(o => (o.t === 'same' ? tile(o.a, 'dim') : o.t === 'miss' ? tile('', 'gap') : tile(o.a, 'wrong')));
