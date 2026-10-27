@@ -843,6 +843,8 @@ async function record(word, typed) {
   session.checked = true;
   updateMistakes(word, correct);
 
+  // Emptied before the field hides so browsers don't offer to save the answer as a password.
+  answerInput.value = '';
   answerInput.disabled = true;
   answerInput.blur();
   renderSegs();

@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap">
-  <link rel="stylesheet" href="styles.css?v=8">
+  <link rel="stylesheet" href="styles.css?v=9">
 </head>
 <body class="locked">
   <div id="gate" class="gate">
@@ -295,7 +295,8 @@
             <span id="typed" class="tiles"></span>
             <span class="speller-ph">Tap here and type</span>
             <span class="cap">Each letter becomes a tile as you type</span>
-            <input id="answer" type="text" maxlength="40" aria-label="Type the word you hear" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done">
+            <!-- Password type stops phone keyboards from suggesting the spelling; the tiles show what is typed. -->
+            <input id="answer" type="password" name="dictation-answer" maxlength="40" aria-label="Type the word you hear" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" data-lpignore="true" data-1p-ignore data-bwignore>
           </label>
           <div class="play-actions">
             <button id="skip" class="btn ghost" type="button">Skip</button>
@@ -423,7 +424,7 @@
     Definitions from the <a href="https://dictionaryapi.dev/" target="_blank" rel="noopener">Free Dictionary API</a>. Progress is saved only in this browser.
   </footer>
 
-  <script src="words.js?v=8"></script>
-  <script src="app.js?v=8"></script>
+  <script src="words.js?v=9"></script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>
