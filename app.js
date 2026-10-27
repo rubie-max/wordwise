@@ -57,11 +57,28 @@ $('#gate-reveal').addEventListener('click', () => {
   $('#gate-reveal').setAttribute('aria-label', show ? 'Hide password' : 'Show password');
 });
 
+function setTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  $('meta[name="theme-color"]').content = theme === 'dark' ? '#0a0c18' : '#f4f3fb';
+  store.set('wordwise-theme', theme);
+  renderPills('#theme-pills', 'themeChoice', theme);
+}
+
+// Marks the matching button in a segmented control as chosen.
+function renderPills(group, key, value) {
+  $$(`${group} button`).forEach(b => {
+    const on = b.dataset[key] === String(value);
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-checked', String(on));
+  });
+}
+
 $('#theme-toggle').addEventListener('click', () => {
-  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-  document.documentElement.dataset.theme = next;
-  $('meta[name="theme-color"]').content = next === 'dark' ? '#0a0c18' : '#f4f3fb';
-  store.set('wordwise-theme', next);
+  setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+});
+$('#theme-pills').addEventListener('click', e => {
+  const b = e.target.closest('[data-theme-choice]');
+  if (b) setTheme(b.dataset.themeChoice);
 });
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
@@ -102,15 +119,15 @@ function bindPopover(toggleSel, panelSel) {
     const open = panel.hidden || panel.parentElement !== toggle.parentElement;
     closePopovers();
     toggle.parentElement.append(panel);
+    panel.classList.add('popover');
     panel.hidden = !open;
     toggle.setAttribute('aria-expanded', String(open));
   });
   panel.addEventListener('click', e => e.stopPropagation());
 }
 
-bindPopover('#voice-toggle', '#voice-panel');
+// The voice controls live in Settings and borrow a popover during a session.
 bindPopover('#session-voice', '#voice-panel');
-bindPopover('#account-toggle', '#account-panel');
 document.addEventListener('click', closePopovers);
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
@@ -124,9 +141,39 @@ function showTab(name) {
   $$('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   $$('.panel').forEach(p => (p.hidden = p.id !== name));
   if (name === 'progress') renderProgress();
+  if (name === 'settings') renderSettings();
   window.scrollTo({ top: 0 });
 }
 $$('.tab').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+$('#account-toggle').addEventListener('click', () => showTab('settings'));
+
+/* ---------- Settings ---------- */
+
+function renderSettings() {
+  const panel = $('#voice-panel');
+  panel.classList.remove('popover');
+  panel.hidden = false;
+  $('#voice-slot').append(panel);
+  renderPills('#theme-pills', 'themeChoice', document.documentElement.dataset.theme);
+  renderPills('#goal-pills', 'goal', store.get('dailyGoal', 10));
+}
+
+$('#goal-pills').addEventListener('click', e => {
+  const b = e.target.closest('[data-goal]');
+  if (!b) return;
+  store.set('dailyGoal', +b.dataset.goal);
+  renderPills('#goal-pills', 'goal', +b.dataset.goal);
+  renderHome();
+});
+
+$('#copy-prompt').addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText($('#gpt-prompt').textContent);
+    toast('Copied. Paste it into ChatGPT.');
+  } catch {
+    toast('Copy did not work. Press and hold the text to copy it.');
+  }
+});
 
 /* ---------- Speech ---------- */
 
@@ -518,7 +565,10 @@ $('#list-grid').addEventListener('click', e => {
   store.set('selectedList', selectedList);
   $('#setup-error').textContent = '';
   renderLists();
-  if (selectedList === 'custom') $('#custom-words').focus();
+  if (selectedList === 'custom' && !listWords('custom').length) {
+    showTab('words');
+    $('#custom-words').focus();
+  }
 });
 
 $('#count-pills').addEventListener('click', e => {

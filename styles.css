@@ -299,10 +299,13 @@ body { --nav-h: 86px; }
   z-index: 40;
 }
 .popover-title { margin: 0; font-weight: 600; font-size: 1.02rem; }
-.popover label { font-size: .8rem; color: var(--muted); font-weight: 500; }
-.popover select { margin-top: .3rem; font-size: .86rem; padding: .45rem .6rem; }
+.voice-panel { display: grid; gap: .75rem; }
+.voice-slot .popover-title { display: none; }
+.voice-slot .voice-panel .btn { justify-self: start; }
+.voice-panel label { font-size: .8rem; color: var(--muted); font-weight: 500; }
+.voice-panel select { margin-top: .3rem; font-size: .86rem; padding: .45rem .6rem; }
 .rate-row #rate-value { float: right; color: var(--text); }
-.popover input[type="range"] { width: 100%; margin-top: .4rem; accent-color: var(--accent); }
+.voice-panel input[type="range"] { width: 100%; margin-top: .4rem; accent-color: var(--accent); }
 .voice-tip { margin: 0; padding: .6rem .75rem; border-radius: var(--radius-sm); background: var(--accent-soft); color: var(--accent-ink); font-size: .78rem; line-height: 1.4; }
 
 /* Layout */
@@ -631,6 +634,13 @@ textarea { resize: vertical; margin-top: .9rem; }
 .file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .custom-foot { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; margin-top: .6rem; }
 .custom-foot p { margin: 0; }
+.gpt-card { margin-top: 1rem; }
+.gpt-prompt { margin: 0 0 .85rem; padding: .8rem .95rem; border-radius: var(--radius-sm); background: var(--surface); border: 1px dashed var(--border); font-size: .9rem; line-height: 1.45; user-select: all; }
+
+/* Settings */
+.settings-grid { display: grid; gap: 1rem; }
+.settings-grid .card { margin: 0; }
+.settings-grid .segmented { align-self: start; }
 
 /* Read-aloud button after a meaning or example */
 .say {
@@ -1113,6 +1123,7 @@ footer { text-align: center; color: var(--muted); font-size: .78rem; padding: 1.
   .stats { grid-template-columns: repeat(4, 1fr); }
   .hero .btn.big { width: auto; }
   .custom-head { flex-direction: row; justify-content: space-between; align-items: flex-start; }
+  .settings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (min-width: 860px) {
