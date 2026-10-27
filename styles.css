@@ -303,6 +303,7 @@ body { --nav-h: 86px; }
 .popover select { margin-top: .3rem; font-size: .86rem; padding: .45rem .6rem; }
 .rate-row #rate-value { float: right; color: var(--text); }
 .popover input[type="range"] { width: 100%; margin-top: .4rem; accent-color: var(--accent); }
+.voice-tip { margin: 0; padding: .6rem .75rem; border-radius: var(--radius-sm); background: var(--accent-soft); color: var(--accent-ink); font-size: .78rem; line-height: 1.4; }
 
 /* Layout */
 main { max-width: 1040px; margin: 1.1rem auto; padding: 0 1rem; }

@@ -127,13 +127,34 @@ $$('.tab').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)
 const canSpeak = 'speechSynthesis' in window;
 let voices = [];
 
+// macOS ships joke voices that should never be picked automatically.
+const NOVELTY_VOICES = /\b(albert|bad news|bahh|bells|boing|bubbles|cellos|fred|good news|jester|junior|organ|ralph|superstar|trinoids|whisper|wobble|zarvox)\b/i;
+const NATURAL_SCORE = 50;
+
+function voiceScore(v) {
+  const name = v.name;
+  let score = 0;
+  if (/natural/i.test(name)) score += 100;
+  if (/premium/i.test(name)) score += 90;
+  if (/enhanced/i.test(name)) score += 70;
+  if (/online/i.test(name)) score += 60;
+  if (/google/i.test(name)) score += 50;
+  if (!v.localService) score += 10;
+  if (/^en[-_](us|gb)$/i.test(v.lang)) score += 5;
+  if (NOVELTY_VOICES.test(name)) score -= 200;
+  return score;
+}
+
 function loadVoices() {
-  voices = speechSynthesis.getVoices().filter(v => v.lang.toLowerCase().startsWith('en'));
+  voices = speechSynthesis.getVoices()
+    .filter(v => v.lang.toLowerCase().startsWith('en'))
+    .sort((a, b) => voiceScore(b) - voiceScore(a));
   const saved = store.get('voice', '');
   $('#voice').innerHTML = voices.length
-    ? voices.map(v => `<option value="${esc(v.name)}">${esc(v.name)} (${esc(v.lang)})</option>`).join('')
+    ? voices.map(v => `<option value="${esc(v.name)}">${esc(v.name)} (${esc(v.lang)})${voiceScore(v) >= NATURAL_SCORE ? ' - natural' : ''}</option>`).join('')
     : '<option value="">Default voice</option>';
   if (voices.some(v => v.name === saved)) $('#voice').value = saved;
+  $('#voice-tip').hidden = !voices.length || voiceScore(voices[0]) >= NATURAL_SCORE;
 }
 
 if (canSpeak) {
