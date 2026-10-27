@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WordWise - in-app keyboard mockups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="styles.css?v=9">
+<style>
+  body { padding: 0; }
+  .gallery { display: flex; flex-wrap: wrap; gap: 28px; padding: 28px; }
+  .single .gallery { padding: 0; gap: 0; }
+  .scr { position: relative; width: 390px; height: 800px; overflow: hidden; border-radius: 34px; border: 1px solid var(--border); background: var(--bg); }
+  .single .scr { border-radius: 0; border: 0; }
+  .sb { position: absolute; top: 15px; left: 26px; right: 26px; z-index: 2; display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; }
+  .scr .play { position: absolute; inset: 0; height: auto; z-index: auto; }
+  .scr .play-col { padding: 50px 18px 0; }
+  .scr .segs { --n: 10; }
+
+  /* Shared keyboard frame */
+  .kb { margin: 12px -18px 0; padding: 10px 4px 26px; display: grid; gap: 10px; flex: none;
+    background: color-mix(in srgb, var(--card) 94%, transparent); border-top: 1px solid var(--border); }
+  .kb .r { display: flex; justify-content: center; gap: 5px; }
+  .kb .k { flex: 0 0 33px; height: 46px; display: grid; place-items: center; border: 0; border-radius: 9px;
+    background: var(--surface); color: var(--text); font: inherit; font-style: normal; font-size: 20px; font-weight: 500; }
+  .kb .k.wide { flex-basis: 52px; font-size: 14px; color: var(--muted); }
+  .kb .k.go { flex: 1 1 auto; background: var(--grad); color: var(--on-grad); font-size: 16px; font-weight: 600; }
+  .kb .k.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); font-size: 15px; font-weight: 600; }
+  .kb .k svg { width: 22px; height: 22px; }
+
+  /* A. Soft keys */
+  #soft .kb .r.last .k.wide { flex-basis: 76px; }
+
+  /* B. Letter-tile keys */
+  #tile .kb { gap: 12px; }
+  #tile .kb .k { height: 48px; background: var(--tile); border: 1px solid var(--border); border-bottom: 3px solid var(--tile-edge); font-size: 21px; }
+  #tile .kb .k.wide { background: var(--surface); }
+  #tile .kb .k.pressed { position: relative; background: var(--accent-soft); border-color: var(--accent); }
+  #tile .kb .k.pressed::after { content: attr(data-l); position: absolute; left: 50%; bottom: calc(100% + 6px); transform: translateX(-50%);
+    width: 50px; height: 58px; display: grid; place-items: center; border-radius: 14px;
+    background: var(--grad); color: var(--on-grad); font-size: 30px; font-weight: 600; box-shadow: 0 10px 24px rgb(124 104 255 / .45); }
+
+  /* C. Keyboard with listening tools */
+  #tools .tiles b { flex-basis: 38px; height: 50px; font-size: 25px; border-radius: 12px; }
+  #tools .kb { padding-top: 12px; }
+  .tools { display: flex; align-items: center; gap: 7px; padding: 0 8px 2px; }
+  .tools .mini-orb { width: 40px; height: 40px; box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 14%, transparent); }
+  .tools .hint { padding: 7px 12px; font-size: 13px; }
+  .tools .skip { margin-left: auto; background: none; border: 0; color: var(--muted); font: inherit; font-size: 14px; font-weight: 500; }
+
+  /* D. Alphabet order */
+  #abc .kb { padding-inline: 12px; gap: 8px; }
+  .abc { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .abc .k { height: 50px; font-size: 21px; }
+  .abc .k.wide { font-size: 14px; }
+  #abc .play-actions { margin-top: 4px; }
+
+  .big-cap { margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="gallery">
+
+  <!-- A. Soft keys -->
+  <section class="scr" id="soft">
+    <div class="sb"><span>9:41</span><span>100%</span></div>
+    <div class="play" data-state="typing">
+      <div class="play-col">
+        <div class="play-head">
+          <button class="icon-btn" aria-label="End"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+          <div class="play-title"><b>Word 3 of 10</b><span>Commonly misspelled</span></div>
+          <span></span>
+        </div>
+        <div class="segs"><i class="ok"></i><i class="ok"></i><i class="now"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="mini card">
+          <button class="mini-orb"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg></button>
+          <div class="mini-text"><b>Hear it again</b><span>Tap the circle to replay the word</span></div>
+          <button class="hint">Slower</button>
+        </div>
+        <div class="answer-form">
+          <div class="speller">
+            <span class="lab">Your spelling</span>
+            <span class="tiles"><b>n</b><b>e</b><b>c</b><b>e</b><b>s</b><b class="caret"></b></span>
+            <span class="cap">Each letter becomes a tile as you type</span>
+          </div>
+        </div>
+        <div class="kb">
+          <div class="r"><i class="k">q</i><i class="k">w</i><i class="k">e</i><i class="k">r</i><i class="k">t</i><i class="k">y</i><i class="k">u</i><i class="k">i</i><i class="k">o</i><i class="k">p</i></div>
+          <div class="r"><i class="k">a</i><i class="k">s</i><i class="k">d</i><i class="k">f</i><i class="k">g</i><i class="k">h</i><i class="k">j</i><i class="k">k</i><i class="k">l</i></div>
+          <div class="r"><i class="k wide">'</i><i class="k">z</i><i class="k">x</i><i class="k">c</i><i class="k">v</i><i class="k">b</i><i class="k">n</i><i class="k">m</i><i class="k wide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 5H9l-6 7 6 7h12z"/><path d="m17 9-6 6M11 9l6 6"/></svg></i></div>
+          <div class="r last"><i class="k ghost wide">Skip</i><i class="k wide">-</i><i class="k go">Check</i></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- B. Letter-tile keys -->
+  <section class="scr" id="tile">
+    <div class="sb"><span>9:41</span><span>100%</span></div>
+    <div class="play" data-state="typing">
+      <div class="play-col">
+        <div class="play-head">
+          <button class="icon-btn" aria-label="End"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+          <div class="play-title"><b>Word 3 of 10</b><span>Commonly misspelled</span></div>
+          <span></span>
+        </div>
+        <div class="segs"><i class="ok"></i><i class="ok"></i><i class="now"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="mini card">
+          <button class="mini-orb"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg></button>
+          <div class="mini-text"><b>Hear it again</b><span>Tap the circle to replay the word</span></div>
+          <button class="hint">Slower</button>
+        </div>
+        <div class="answer-form">
+          <div class="speller">
+            <span class="lab">Your spelling</span>
+            <span class="tiles"><b>n</b><b>e</b><b>c</b><b>e</b><b>s</b><b class="caret"></b></span>
+            <span class="cap">Each letter becomes a tile as you type</span>
+          </div>
+        </div>
+        <div class="play-actions"><button class="btn ghost">Skip</button><button class="btn">Check</button></div>
+        <div class="kb">
+          <div class="r"><i class="k">q</i><i class="k">w</i><i class="k">e</i><i class="k">r</i><i class="k">t</i><i class="k">y</i><i class="k">u</i><i class="k">i</i><i class="k">o</i><i class="k">p</i></div>
+          <div class="r"><i class="k">a</i><i class="k pressed" data-l="s">s</i><i class="k">d</i><i class="k">f</i><i class="k">g</i><i class="k">h</i><i class="k">j</i><i class="k">k</i><i class="k">l</i></div>
+          <div class="r"><i class="k wide">'</i><i class="k">z</i><i class="k">x</i><i class="k">c</i><i class="k">v</i><i class="k">b</i><i class="k">n</i><i class="k">m</i><i class="k wide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 5H9l-6 7 6 7h12z"/><path d="m17 9-6 6M11 9l6 6"/></svg></i></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- C. Keyboard with listening tools -->
+  <section class="scr" id="tools">
+    <div class="sb"><span>9:41</span><span>100%</span></div>
+    <div class="play" data-state="typing">
+      <div class="play-col">
+        <div class="play-head">
+          <button class="icon-btn" aria-label="End"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+          <div class="play-title"><b>Word 3 of 10</b><span>Commonly misspelled</span></div>
+          <span></span>
+        </div>
+        <div class="segs"><i class="ok"></i><i class="ok"></i><i class="now"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="answer-form">
+          <div class="speller">
+            <span class="lab">Your spelling</span>
+            <span class="tiles"><b>n</b><b>e</b><b>c</b><b>e</b><b>s</b><b class="caret"></b></span>
+            <span class="cap">Each letter becomes a tile as you type</span>
+          </div>
+        </div>
+        <div class="kb">
+          <div class="tools">
+            <button class="mini-orb" aria-label="Play"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg></button>
+            <button class="hint">Slower</button>
+            <button class="hint">In a sentence</button>
+            <button class="skip">Skip</button>
+          </div>
+          <div class="r"><i class="k">q</i><i class="k">w</i><i class="k">e</i><i class="k">r</i><i class="k">t</i><i class="k">y</i><i class="k">u</i><i class="k">i</i><i class="k">o</i><i class="k">p</i></div>
+          <div class="r"><i class="k">a</i><i class="k">s</i><i class="k">d</i><i class="k">f</i><i class="k">g</i><i class="k">h</i><i class="k">j</i><i class="k">k</i><i class="k">l</i></div>
+          <div class="r"><i class="k wide">'</i><i class="k">z</i><i class="k">x</i><i class="k">c</i><i class="k">v</i><i class="k">b</i><i class="k">n</i><i class="k">m</i><i class="k wide">-</i></div>
+          <div class="r"><i class="k wide" style="flex-basis:96px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 5H9l-6 7 6 7h12z"/><path d="m17 9-6 6M11 9l6 6"/></svg></i><i class="k go">Check</i></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- D. Alphabet order -->
+  <section class="scr" id="abc">
+    <div class="sb"><span>9:41</span><span>100%</span></div>
+    <div class="play" data-state="typing">
+      <div class="play-col">
+        <div class="play-head">
+          <button class="icon-btn" aria-label="End"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+          <div class="play-title"><b>Word 3 of 10</b><span>Commonly misspelled</span></div>
+          <span></span>
+        </div>
+        <div class="segs"><i class="ok"></i><i class="ok"></i><i class="now"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="mini card">
+          <button class="mini-orb"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg></button>
+          <div class="mini-text"><b>Hear it again</b><span>Tap the circle to replay the word</span></div>
+          <button class="hint">Slower</button>
+        </div>
+        <div class="answer-form">
+          <div class="speller">
+            <span class="lab">Your spelling</span>
+            <span class="tiles"><b>n</b><b>e</b><b>c</b><b>e</b><b>s</b><b class="caret"></b></span>
+            <span class="cap">Each letter becomes a tile as you type</span>
+          </div>
+        </div>
+        <div class="kb">
+          <div class="abc">
+            <i class="k">a</i><i class="k">b</i><i class="k">c</i><i class="k">d</i><i class="k">e</i><i class="k">f</i><i class="k">g</i>
+            <i class="k">h</i><i class="k">i</i><i class="k">j</i><i class="k">k</i><i class="k">l</i><i class="k">m</i><i class="k">n</i>
+            <i class="k">o</i><i class="k">p</i><i class="k">q</i><i class="k">r</i><i class="k">s</i><i class="k">t</i><i class="k">u</i>
+            <i class="k">v</i><i class="k">w</i><i class="k">x</i><i class="k">y</i><i class="k">z</i><i class="k wide">'</i><i class="k wide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 5H9l-6 7 6 7h12z"/><path d="m17 9-6 6M11 9l6 6"/></svg></i>
+          </div>
+          <div class="play-actions"><button class="btn ghost">Skip</button><button class="btn">Check</button></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+<script>
+  const s = new URLSearchParams(location.search).get('s');
+  if (s) {
+    document.body.classList.add('single');
+    document.querySelectorAll('.scr').forEach(el => { if (el.id !== s) el.style.display = 'none'; });
+  }
+</script>
+</body>
+</html>
