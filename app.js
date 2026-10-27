@@ -156,7 +156,24 @@ function renderSettings() {
   $('#voice-slot').append(panel);
   renderPills('#theme-pills', 'themeChoice', document.documentElement.dataset.theme);
   renderPills('#goal-pills', 'goal', store.get('dailyGoal', 10));
+  const prefs = soundPrefs();
+  $('#sfx-on').checked = prefs.sfx;
+  $('#keys-on').checked = prefs.keys;
+  $('#buzz-on').checked = prefs.buzz;
 }
+
+$('#sfx-on').addEventListener('change', e => {
+  store.set('sfx', e.target.checked);
+  sound('correct');
+});
+$('#keys-on').addEventListener('change', e => {
+  store.set('keySounds', e.target.checked);
+  if (e.target.checked) keyClick(1900);
+});
+$('#buzz-on').addEventListener('change', e => {
+  store.set('vibrate', e.target.checked);
+  buzz(30);
+});
 
 $('#goal-pills').addEventListener('click', e => {
   const b = e.target.closest('[data-goal]');
@@ -247,6 +264,86 @@ function speak(text, rate = +$('#rate').value) {
 const spellOut = word => speak(word.toUpperCase().split('').join(', '), 0.7);
 
 $('#voice-test').addEventListener('click', () => speak('Necessary. This is how your dictation will sound.'));
+
+/* ---------- Sound effects ---------- */
+
+// Synthesised with Web Audio, so there are no sound files to download or cache.
+const sfx = { ctx: null, noise: null };
+
+function audioCtx() {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return null;
+  if (!sfx.ctx) sfx.ctx = new AC();
+  if (sfx.ctx.state === 'suspended') sfx.ctx.resume();
+  return sfx.ctx;
+}
+
+// notes: [frequency in Hz, start in seconds, length in seconds]
+function tones(notes, { type = 'triangle', volume = 0.2 } = {}) {
+  const ctx = audioCtx();
+  if (!ctx) return;
+  const now = ctx.currentTime + 0.02;
+  for (const [freq, start, len] of notes) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.0001, now + start);
+    gain.gain.exponentialRampToValueAtTime(volume, now + start + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + start + len);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(now + start);
+    osc.stop(now + start + len + 0.05);
+  }
+}
+
+function keyClick(freq) {
+  const ctx = audioCtx();
+  if (!ctx) return;
+  if (!sfx.noise) {
+    const buf = ctx.createBuffer(1, Math.round(ctx.sampleRate * 0.025), ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length) ** 2;
+    sfx.noise = buf;
+  }
+  const src = ctx.createBufferSource();
+  const filter = ctx.createBiquadFilter();
+  const gain = ctx.createGain();
+  src.buffer = sfx.noise;
+  filter.type = 'bandpass';
+  filter.frequency.value = freq;
+  filter.Q.value = 1.4;
+  gain.gain.value = 0.5;
+  src.connect(filter).connect(gain).connect(ctx.destination);
+  src.start();
+}
+
+const SOUNDS = {
+  start: () => tones([[523.25, 0, 0.12], [783.99, 0.08, 0.22]], { volume: 0.12 }),
+  correct: () => tones([[659.25, 0, 0.16], [987.77, 0.08, 0.34]]),
+  streak: () => tones([[659.25, 0, 0.12], [830.61, 0.07, 0.12], [987.77, 0.14, 0.12], [1318.51, 0.21, 0.42]], { volume: 0.18 }),
+  wrong: () => tones([[329.63, 0, 0.16], [246.94, 0.13, 0.34]], { type: 'sine', volume: 0.26 }),
+  skip: () => tones([[440, 0, 0.1], [392, 0.07, 0.16]], { type: 'sine', volume: 0.12 }),
+  complete: () => tones([[523.25, 0, 0.16], [659.25, 0.12, 0.16], [783.99, 0.24, 0.16], [1046.5, 0.36, 0.55]], { volume: 0.18 }),
+  perfect: () => tones([[523.25, 0, 0.14], [659.25, 0.1, 0.14], [783.99, 0.2, 0.14], [1046.5, 0.3, 0.2], [1318.51, 0.42, 0.2], [1567.98, 0.54, 0.65]], { volume: 0.17 }),
+  goal: () => tones([[1046.5, 0, 0.1], [1318.51, 0.08, 0.1], [1567.98, 0.16, 0.1], [2093, 0.24, 0.4]], { type: 'sine', volume: 0.1 }),
+};
+
+const soundPrefs = () => ({ sfx: store.get('sfx', true), keys: store.get('keySounds', true), buzz: store.get('vibrate', true) });
+
+function sound(name) {
+  if (soundPrefs().sfx) SOUNDS[name]?.();
+}
+
+function buzz(pattern) {
+  if (soundPrefs().buzz && navigator.vibrate) navigator.vibrate(pattern);
+}
+
+function keyFeedback(key) {
+  const { keys } = soundPrefs();
+  if (keys) keyClick(key === 'Backspace' ? 1100 : 1900);
+  buzz(6);
+}
 
 /* ---------- Dictionary data ---------- */
 
@@ -497,7 +594,7 @@ let selectedList = store.get('selectedList', 'misspelled');
 if (!LIST_KEYS.includes(selectedList)) selectedList = 'easy';
 let selectedCount = store.get('count', 10);
 
-const session = { words: [], index: 0, results: [], checked: false, label: '', started: 0, typed: '' };
+const session = { words: [], index: 0, results: [], checked: false, label: '', started: 0, typed: '', askedAt: 0 };
 const current = () => session.words[session.index];
 const parseCustom = text => [...new Set(text.split(/[\n,;]+/).map(w => w.trim()).filter(Boolean))];
 
@@ -651,6 +748,7 @@ function startSession(words, label) {
   Object.assign(session, { words, index: 0, results: [], label, started: Date.now() });
   $('#session-list').textContent = label;
   openPlay('session');
+  sound('start');
   showWord();
 }
 
@@ -709,6 +807,7 @@ function showWord() {
   $('#progress-text').textContent = `Word ${session.index + 1} of ${session.words.length}`;
   renderSegs();
   session.typed = '';
+  session.askedAt = Date.now();
   renderTyped();
   setTimeout(() => { if (current() === word && !session.checked) speak(word); }, 300);
   lookup(word).catch(() => {});
@@ -727,6 +826,7 @@ keys.addEventListener('pointerdown', e => {
   pressedKey?.classList.remove('down');
   pressedKey = key;
   key.classList.add('down');
+  keyFeedback(key.dataset.key);
   if (key.dataset.key === 'Backspace') {
     typeKey('Backspace');
     repeatTimer = setTimeout(() => { repeatTimer = setInterval(() => typeKey('Backspace'), 70); }, 450);
@@ -887,10 +987,14 @@ function updateMistakes(word, correct) {
 function entryFacts(entries) {
   const all = entries || [];
   const phonetic = all.flatMap(e => [e.phonetic, ...(e.phonetics || []).map(p => p.text)]).find(Boolean) || '';
-  const defs = all.flatMap(e => e.meanings || []).flatMap(m => m.definitions || []);
+  const meanings = all.flatMap(e => e.meanings || []);
+  const defs = meanings.flatMap(m => (m.definitions || []).map(d => ({ ...d, meaning: m })));
   const main = defs.find(d => !isLabelled(d)) || defs[0];
   const example = [main, ...defs].map(d => d?.example).find(x => x && x.length <= 120) || '';
-  return { phonetic, def: main?.definition || '', example };
+  const similar = main
+    ? [...new Set([...(main.synonyms || []), ...(main.meaning.synonyms || [])])].filter(w => !/\s/.test(w)).slice(0, 4)
+    : [];
+  return { phonetic, def: main?.definition || '', example, pos: main?.meaning.partOfSpeech || '', similar };
 }
 
 const inARow = () => {
@@ -899,15 +1003,44 @@ const inARow = () => {
   return n;
 };
 
-function showCorrect(word) {
+const PRAISE = ['Correct', 'Spot on', 'Nailed it', 'Well spelled', 'Exactly right', 'Brilliant'];
+const isMilestone = run => run === 3 || (run >= 5 && run % 5 === 0);
+let lastPraise = '';
+
+function praiseFor(run) {
+  if (run === 3) return 'Hat trick!';
+  if (isMilestone(run)) return `${run} in a row!`;
+  const options = PRAISE.filter(p => p !== lastPraise);
+  lastPraise = options[Math.floor(Math.random() * options.length)];
+  return lastPraise;
+}
+
+const formatSecs = s => (s < 10 ? `${s.toFixed(1)}s` : `${Math.round(s)}s`);
+
+function showCorrect(word, secs) {
   setState('ok');
-  $('#ok-word').textContent = word;
-  $('#ok-phon').innerHTML = `<button class="chip" type="button" data-speak="${esc(word)}">Play</button>
-    <button class="chip" type="button">Meaning</button>`;
-  $('#ok-def').textContent = 'Loading meaning\u2026';
   const run = inARow();
+  const right = session.results.filter(r => r.correct).length;
+  $('#ok-title').textContent = praiseFor(run);
+  $('#ok-sub').textContent = `Spelled in ${formatSecs(secs)}, ${right} of ${session.results.length} right so far`;
   $('#in-a-row').hidden = run < 2;
+  $('#in-a-row').classList.toggle('hot', isMilestone(run));
   $('#in-a-row span').textContent = `${run} in a row`;
+
+  const burst = $('#ok-burst');
+  burst.classList.remove('go');
+  void burst.offsetWidth;
+  burst.classList.add('go');
+
+  $('#ok-word').textContent = word;
+  $('#ok-tiles').classList.toggle('long', word.length > 11);
+  $('#ok-tiles').innerHTML = [...word].map((l, i) => `<b class="good" style="--i:${i}">${l === ' ' ? '&nbsp;' : esc(l)}</b>`).join('');
+  $('#ok-phon').innerHTML = `<button class="chip" type="button" data-speak="${esc(word)}">Play</button>
+    <button class="chip" type="button" data-sheet-word="${esc(word)}">Meaning</button>`;
+  $('#ok-pos').hidden = true;
+  $('#ok-def').textContent = 'Loading meaning\u2026';
+  $('#ok-ex').hidden = true;
+  $('#ok-syn').hidden = true;
   $('.res-ok .res-body').scrollTop = 0;
   if (finePointer) $('#ok-next').focus();
 }
@@ -935,10 +1068,18 @@ function showWrong(word, typed) {
 }
 
 function fillResult(word, entries, correct) {
-  const { phonetic, def, example } = entryFacts(entries);
+  const { phonetic, def, example, pos, similar } = entryFacts(entries);
   if (correct) {
     if (phonetic) $('#ok-phon').insertAdjacentHTML('afterbegin', `<span>${esc(phonetic)}</span>`);
+    $('#ok-pos').textContent = pos;
+    $('#ok-pos').hidden = !pos;
     $('#ok-def').innerHTML = def ? spoken(def) : 'Tap Meaning for the full dictionary entry.';
+    $('#ok-ex').innerHTML = example ? spoken(`"${example}"`) : '';
+    $('#ok-ex').hidden = !example;
+    $('#ok-syn').innerHTML = similar.length
+      ? `<span>Similar</span>${similar.map(w => `<button class="chip link" type="button" data-sheet-word="${esc(w)}">${esc(w)}</button>`).join('')}`
+      : '';
+    $('#ok-syn').hidden = !similar.length;
   } else {
     $('#bad-meaning').hidden = !def;
     $('#bad-def').innerHTML = def ? spoken(def) : '';
@@ -950,6 +1091,7 @@ function fillResult(word, entries, correct) {
 async function record(word, typed) {
   const correct = typed.toLowerCase() === word.toLowerCase();
   const index = session.index;
+  const secs = (Date.now() - session.askedAt) / 1000;
   session.results.push({ word, typed, correct });
   session.checked = true;
   updateMistakes(word, correct);
@@ -957,8 +1099,14 @@ async function record(word, typed) {
   renderSegs();
   const last = index + 1 >= session.words.length;
   $$('.next-btn').forEach(b => (b.textContent = last ? 'See results' : 'Next word'));
-  if (correct) showCorrect(word);
-  else showWrong(word, typed);
+  if (correct) {
+    showCorrect(word, secs);
+    sound(isMilestone(inARow()) ? 'streak' : 'correct');
+  } else {
+    showWrong(word, typed);
+    sound(typed ? 'wrong' : 'skip');
+    if (typed) buzz([25, 40, 25]);
+  }
 
   try {
     const entries = await lookup(word);
@@ -983,8 +1131,9 @@ $('#bad-next').addEventListener('click', next);
 $('#bad-hear').addEventListener('click', () => speak(current()));
 $('#bad-entry').addEventListener('click', () => openSheet(current()));
 $('#ok-card').addEventListener('click', e => {
-  if (!e.target.closest('[data-speak]')) openSheet(current());
+  if (!e.target.closest('button')) openSheet(current());
 });
+$$('.enter-hint').forEach(el => (el.hidden = !finePointer));
 
 $('#quit').addEventListener('click', () => {
   if (session.results.length) finish();
@@ -1022,6 +1171,8 @@ function finish() {
   const done = totals.get(today) || 0;
   const pct = Math.round((score / results.length) * 100);
   const secs = Math.round((Date.now() - session.started) / 1000);
+  sound(pct === 100 ? 'perfect' : 'complete');
+  if (done >= goal && done - results.length < goal) setTimeout(() => sound('goal'), 900);
 
   $('#summary-list-name').textContent = session.label;
   $('#summary-ring').style.setProperty('--pct', pct);

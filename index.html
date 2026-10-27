@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap">
-  <link rel="stylesheet" href="styles.css?v=14">
+  <link rel="stylesheet" href="styles.css?v=15">
 </head>
 <body class="locked">
   <div id="gate" class="gate">
@@ -280,6 +280,29 @@
         </div>
         <div class="card">
           <div class="card-head">
+            <h2>Sounds</h2>
+            <p class="muted small">Short sounds between words. They never play over the spoken word.</p>
+          </div>
+          <div class="toggles">
+            <label class="switch">
+              <input id="sfx-on" type="checkbox">
+              <span class="track" aria-hidden="true"></span>
+              <span>Right and wrong sounds<small>Chimes for answers, streaks and finishing a session</small></span>
+            </label>
+            <label class="switch">
+              <input id="keys-on" type="checkbox">
+              <span class="track" aria-hidden="true"></span>
+              <span>Key clicks<small>A soft click when you tap a letter</small></span>
+            </label>
+            <label class="switch">
+              <input id="buzz-on" type="checkbox">
+              <span class="track" aria-hidden="true"></span>
+              <span>Vibration<small>A small buzz on taps and wrong answers. Android phones only.</small></span>
+            </label>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head">
             <h2>Appearance</h2>
             <p class="muted small">You can also switch with the moon button at the top.</p>
           </div>
@@ -364,25 +387,37 @@
       <!-- Correct -->
       <div class="res res-ok" aria-live="polite">
         <div class="res-body">
-          <div class="badge-ok">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7"/></svg>
+          <div class="badge-wrap">
+            <div id="ok-burst" class="burst" aria-hidden="true">
+              <i style="--a:0deg"></i><i style="--a:30deg"></i><i style="--a:60deg"></i><i style="--a:90deg"></i><i style="--a:120deg"></i><i style="--a:150deg"></i><i style="--a:180deg"></i><i style="--a:210deg"></i><i style="--a:240deg"></i><i style="--a:270deg"></i><i style="--a:300deg"></i><i style="--a:330deg"></i>
+            </div>
+            <div class="badge-ok">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7"/></svg>
+            </div>
           </div>
-          <p class="res-title">Correct</p>
+          <p id="ok-title" class="res-title">Correct</p>
+          <p id="ok-sub" class="cap ok-sub"></p>
           <span id="in-a-row" class="streakchip" hidden>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c1 3.5-1.5 5-1.5 8 0 1.5 1 2.5 2 2.5 1.6 0 2.5-1.3 2.5-3 2 1.6 3 4 3 6 0 3.9-2.9 6.5-6.5 6.5S5 19.4 5 15.5C5 10 10 8 12 2z"/></svg>
             <span></span>
           </span>
           <div id="ok-card" class="card res-card ok-card" title="Open the full entry">
             <p id="ok-word" class="word-big"></p>
+            <div id="ok-tiles" class="tiles ok-tiles" aria-hidden="true"></div>
             <div id="ok-phon" class="phon"></div>
-            <p id="ok-def" class="def"></p>
+            <div class="ok-meaning">
+              <p id="ok-pos" class="pos" hidden></p>
+              <p id="ok-def" class="def"></p>
+              <p id="ok-ex" class="example" hidden></p>
+              <p id="ok-syn" class="related ok-syn" hidden></p>
+            </div>
           </div>
         </div>
         <div class="res-foot">
           <button id="ok-next" class="btn full next-btn" type="button">Next word</button>
+          <p class="cap enter-hint" hidden>or press Enter</p>
         </div>
       </div>
-
       <!-- Wrong or skipped -->
       <div class="res res-bad" aria-live="polite">
         <div class="res-body">
@@ -480,7 +515,7 @@
     Definitions from the <a href="https://dictionaryapi.dev/" target="_blank" rel="noopener">Free Dictionary API</a>. Progress is saved only in this browser.
   </footer>
 
-  <script src="words.js?v=14"></script>
-  <script src="app.js?v=14"></script>
+  <script src="words.js?v=15"></script>
+  <script src="app.js?v=15"></script>
 </body>
 </html>
