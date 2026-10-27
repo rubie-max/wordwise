@@ -559,7 +559,6 @@ $('#import-file').addEventListener('change', e => {
 const finePointer = matchMedia('(pointer: fine)').matches;
 const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four'];
 const answerInput = $('#answer');
-let advanceTimer = 0;
 
 const tile = (letter, cls = '') => `<b${cls ? ` class="${cls}"` : ''}>${letter === ' ' ? '&nbsp;' : esc(letter)}</b>`;
 
@@ -632,7 +631,6 @@ function updateAskMode() {
 }
 
 function showWord() {
-  clearTimeout(advanceTimer);
   session.checked = false;
   const word = current();
   $('#progress-text').textContent = `Word ${session.index + 1} of ${session.words.length}`;
@@ -790,22 +788,6 @@ const inARow = () => {
   return n;
 };
 
-function startAdvance() {
-  const btn = $('#ok-next');
-  btn.classList.remove('run');
-  void btn.offsetWidth;
-  btn.classList.add('run');
-  $('#ok-cap').textContent = 'Moves on by itself in 2 seconds';
-  clearTimeout(advanceTimer);
-  advanceTimer = setTimeout(next, 2000);
-}
-
-function stopAdvance() {
-  clearTimeout(advanceTimer);
-  $('#ok-next').classList.remove('run');
-  $('#ok-cap').textContent = 'Tap Next word when you are ready';
-}
-
 function showCorrect(word) {
   setState('ok');
   $('#ok-word').textContent = word;
@@ -816,7 +798,6 @@ function showCorrect(word) {
   $('#in-a-row').hidden = run < 2;
   $('#in-a-row span').textContent = `${run} in a row`;
   $('.res-ok .res-body').scrollTop = 0;
-  startAdvance();
   if (finePointer) $('#ok-next').focus();
 }
 
@@ -881,7 +862,6 @@ async function record(word, typed) {
 }
 
 function next() {
-  clearTimeout(advanceTimer);
   if (!session.checked) return;
   session.index++;
   if (session.index < session.words.length) showWord();
@@ -902,8 +882,7 @@ $('#bad-next').addEventListener('click', next);
 $('#bad-hear').addEventListener('click', () => speak(current()));
 $('#bad-entry').addEventListener('click', () => openSheet(current()));
 $('#ok-card').addEventListener('click', e => {
-  if (e.target.closest('[data-speak]')) stopAdvance();
-  else openSheet(current());
+  if (!e.target.closest('[data-speak]')) openSheet(current());
 });
 
 $('#quit').addEventListener('click', () => {
@@ -912,7 +891,6 @@ $('#quit').addEventListener('click', () => {
 });
 
 function showSetup() {
-  clearTimeout(advanceTimer);
   if (canSpeak) speechSynthesis.cancel();
   closeSheet();
   renderHome();
@@ -927,7 +905,6 @@ function summaryRow(cls, word, note) {
 }
 
 function finish() {
-  clearTimeout(advanceTimer);
   if (canSpeak) speechSynthesis.cancel();
   closeSheet();
   const { results } = session;
@@ -1043,7 +1020,6 @@ function sheetHtml(word, entries) {
 }
 
 async function openSheet(word) {
-  if ($('#session').dataset.state === 'ok') stopAdvance();
   sheetWord = word;
   $('#sheet-wrap').hidden = false;
   $('#sheet-body').innerHTML = `${sheetTop(word, '')}<p class="muted">Looking up...</p>`;

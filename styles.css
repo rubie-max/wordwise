@@ -858,10 +858,6 @@ body.in-play { overflow: hidden; --nav-h: 0px; }
 .phon { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; margin: 4px 0 0; color: var(--muted); font-size: 15px; }
 .def { max-width: 300px; margin: 6px auto 0; font-size: 15px; }
 .def:empty { display: none; }
-.timer { position: relative; overflow: hidden; }
-.timer::after { content: ""; position: absolute; left: 0; bottom: 0; height: 4px; width: 0; background: rgb(13 16 36 / .35); }
-.timer.run::after { animation: drain 2s linear forwards; }
-@keyframes drain { to { width: 100%; } }
 .tip {
   display: flex;
   gap: 10px;
