@@ -209,7 +209,8 @@ const cache = new Map();
 async function lookup(word) {
   const key = word.trim().toLowerCase();
   if (cache.has(key)) return cache.get(key);
-  const res = await fetch(API + encodeURIComponent(key));
+  const url = API + encodeURIComponent(key);
+  const res = await fetch(url).catch(() => new Promise(r => setTimeout(r, 700)).then(() => fetch(url)));
   if (res.status === 404) {
     cache.set(key, null);
     return null;
@@ -231,6 +232,9 @@ function accentOf(url) {
   const m = url.match(/-(uk|us|au|ca|in)\.mp3$/i);
   return m ? m[1].toUpperCase() : 'Audio';
 }
+
+// Senses like "(archaic) ..." or "(usually with the definite article) ..." are rarely the one a learner needs.
+const isLabelled = d => /^\(/.test(d.definition.trim());
 
 function groupMeanings(entries) {
   const groups = new Map();
@@ -775,8 +779,9 @@ function entryFacts(entries) {
   const all = entries || [];
   const phonetic = all.flatMap(e => [e.phonetic, ...(e.phonetics || []).map(p => p.text)]).find(Boolean) || '';
   const defs = all.flatMap(e => e.meanings || []).flatMap(m => m.definitions || []);
-  const example = defs[0]?.example || defs.find(d => d.example)?.example || '';
-  return { phonetic, def: defs[0]?.definition || '', example };
+  const main = defs.find(d => !isLabelled(d)) || defs[0];
+  const example = [main, ...defs].map(d => d?.example).find(x => x && x.length <= 120) || '';
+  return { phonetic, def: main?.definition || '', example };
 }
 
 const inARow = () => {
@@ -997,7 +1002,8 @@ function sheetHtml(word, entries) {
     if (!audio.has(accent)) audio.set(accent, p.audio);
   });
   const syl = syllables(headword);
-  const groups = groupMeanings(entries);
+  const groups = new Map([...groupMeanings(entries)]
+    .sort(([, a], [, b]) => a.defs.every(isLabelled) - b.defs.every(isLabelled)));
   const defs = [...groups.values()].flatMap(g => g.defs);
   const examples = [...new Set(defs.map(d => d.example).filter(Boolean))];
   const syn = [...new Set([...groups.values()].flatMap(g => [...g.syn]))];
