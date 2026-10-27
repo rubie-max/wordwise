@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap">
-  <link rel="stylesheet" href="styles.css?v=12">
+  <link rel="stylesheet" href="styles.css?v=13">
 </head>
 <body class="locked">
   <div id="gate" class="gate">
@@ -179,10 +179,10 @@
           </label>
         </div>
 
-        <div id="custom-wrap" class="card custom" hidden>
+        <div id="custom-wrap" class="card custom">
           <div class="custom-head">
             <div>
-              <h2>My own words</h2>
+              <h2>Add your own words</h2>
               <p class="muted small">Type them, paste a list from ChatGPT, or import a .txt / .csv file. Commas or new lines both work.</p>
             </div>
             <label class="btn ghost small file-btn">
@@ -191,7 +191,10 @@
             </label>
           </div>
           <textarea id="custom-words" rows="5" placeholder="necessary, rhythm, conscience"></textarea>
-          <p id="custom-count" class="muted small"></p>
+          <div class="custom-foot">
+            <p id="custom-count" class="muted small">Your words are saved in this browser.</p>
+            <button id="practise-custom" class="btn small" type="button" hidden>Practise these words</button>
+          </div>
         </div>
       </form>
 
@@ -415,7 +418,7 @@
     Definitions from the <a href="https://dictionaryapi.dev/" target="_blank" rel="noopener">Free Dictionary API</a>. Progress is saved only in this browser.
   </footer>
 
-  <script src="words.js?v=12"></script>
-  <script src="app.js?v=12"></script>
+  <script src="words.js?v=13"></script>
+  <script src="app.js?v=13"></script>
 </body>
 </html>

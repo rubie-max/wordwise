@@ -255,6 +255,10 @@ function groupMeanings(entries) {
 const chips = words => words.slice(0, 20)
   .map(w => `<button class="chip link" data-lookup="${esc(w)}">${esc(w)}</button>`).join('');
 
+const SPEAKER_ICON = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>';
+const spoken = text => `${esc(text)}<button class="say" type="button" data-speak="${esc(text)}" aria-label="Read aloud" title="Read aloud">${SPEAKER_ICON}</button>`;
+const defItem = d => `<li>${spoken(d.definition)}${d.example ? `<p class="example">${spoken(`"${d.example}"`)}</p>` : ''}</li>`;
+
 function wordCard(word, entries) {
   if (!entries) {
     return `<article class="card">
@@ -280,7 +284,7 @@ function wordCard(word, entries) {
   const meaningsHtml = [...groupMeanings(entries)].map(([pos, g]) => `
     <section class="meaning">
       <h3>${esc(pos)}</h3>
-      <ol>${g.defs.map(d => `<li>${esc(d.definition)}${d.example ? `<p class="example">"${esc(d.example)}"</p>` : ''}</li>`).join('')}</ol>
+      <ol>${g.defs.map(defItem).join('')}</ol>
       ${g.syn.size ? `<p class="related"><span>Synonyms</span>${chips([...g.syn])}</p>` : ''}
       ${g.ant.size ? `<p class="related"><span>Antonyms</span>${chips([...g.ant])}</p>` : ''}
     </section>`).join('');
@@ -485,9 +489,9 @@ function renderLists() {
       <span class="list-count">${plural(n, 'word')}</span>
     </button>`;
   }).join('');
-  $('#custom-wrap').hidden = selectedList !== 'custom';
   const customN = parseCustom($('#custom-words').value).length;
-  $('#custom-count').textContent = customN ? `${plural(customN, 'word')} ready.` : '';
+  $('#custom-count').textContent = customN ? `${plural(customN, 'word')} saved in this browser.` : 'Your words are saved in this browser.';
+  $('#practise-custom').hidden = !customN;
   renderHero();
 }
 
@@ -535,6 +539,13 @@ $('#custom-words').value = store.get('customWords', '');
 $('#custom-words').addEventListener('input', () => {
   store.set('customWords', $('#custom-words').value);
   renderLists();
+});
+
+$('#practise-custom').addEventListener('click', () => {
+  selectedList = 'custom';
+  store.set('selectedList', selectedList);
+  renderLists();
+  $('#setup').requestSubmit();
 });
 
 $('#import-file').addEventListener('change', e => {
@@ -877,11 +888,11 @@ function fillResult(word, entries, correct) {
   const { phonetic, def, example } = entryFacts(entries);
   if (correct) {
     if (phonetic) $('#ok-phon').insertAdjacentHTML('afterbegin', `<span>${esc(phonetic)}</span>`);
-    $('#ok-def').textContent = def || 'Tap Meaning for the full dictionary entry.';
+    $('#ok-def').innerHTML = def ? spoken(def) : 'Tap Meaning for the full dictionary entry.';
   } else {
     $('#bad-meaning').hidden = !def;
-    $('#bad-def').textContent = def;
-    $('#bad-ex').textContent = example ? `"${example}"` : '';
+    $('#bad-def').innerHTML = def ? spoken(def) : '';
+    $('#bad-ex').innerHTML = example ? spoken(`"${example}"`) : '';
     $('#bad-ex').hidden = !example;
   }
 }
@@ -1030,7 +1041,7 @@ function sheetHtml(word, entries) {
   const ant = [...new Set([...groups.values()].flatMap(g => [...g.ant]))];
 
   const meaning = [...groups].map(([pos, g]) => `<p class="pos">${esc(pos)}</p>
-    <ol class="defs">${g.defs.map(d => `<li>${esc(d.definition)}${d.example ? `<p class="example">"${esc(d.example)}"</p>` : ''}</li>`).join('')}</ol>`).join('');
+    <ol class="defs">${g.defs.map(defItem).join('')}</ol>`).join('');
 
   return `${sheetTop(headword, `${text ? `${esc(text)} &middot; ` : ''}${plural(syl, 'syllable')}`)}
     <div class="sheet-actions">
@@ -1049,7 +1060,7 @@ function sheetHtml(word, entries) {
         ${syn.length ? `<div class="related sheet-similar"><span>Similar</span>${wordChips(syn.slice(0, 3))}</div>` : ''}
       </div>
       <div class="sheet-pane" data-sheet-pane="examples" hidden>
-        ${examples.length ? `<ul class="ex-list">${examples.map(x => `<li class="example">"${esc(x)}"</li>`).join('')}</ul>` : '<p class="muted">No example sentences for this word yet.</p>'}
+        ${examples.length ? `<ul class="ex-list">${examples.map(x => `<li class="example">${spoken(`"${x}"`)}</li>`).join('')}</ul>` : '<p class="muted">No example sentences for this word yet.</p>'}
       </div>
       <div class="sheet-pane" data-sheet-pane="similar" hidden>
         ${syn.length ? `<p class="pos">Synonyms</p><div class="related">${wordChips(syn)}</div>` : ''}

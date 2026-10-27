@@ -629,6 +629,27 @@ textarea { resize: vertical; margin-top: .9rem; }
 .custom-head p { margin: 0; max-width: 56ch; }
 .file-btn { position: relative; overflow: hidden; align-self: flex-start; }
 .file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.custom-foot { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; margin-top: .6rem; }
+.custom-foot p { margin: 0; }
+
+/* Read-aloud button after a meaning or example */
+.say {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin: -4px 0 -4px 6px;
+  padding: 0;
+  vertical-align: middle;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--accent);
+  font-style: normal;
+  cursor: pointer;
+}
+.say:hover { border-color: var(--accent); }
+.say:active { background: var(--accent-soft); }
 #custom-count { margin: .45rem 0 0; }
 
 /* Practice session: full-screen phone layout */
