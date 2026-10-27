@@ -558,17 +558,22 @@ $('#import-file').addEventListener('change', e => {
 
 const finePointer = matchMedia('(pointer: fine)').matches;
 const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four'];
-const KEY_ROWS = ['qwertyuiop', 'asdfghjkl', "'zxcvbnm-"];
 const MAX_TYPED = 40;
-const BACKSPACE_ICON = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 5H9l-6 7 6 7h12z"/><path d="m17 9-6 6M11 9l6 6"/></svg>';
+const BACKSPACE_ICON = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 5H9l-6 7 6 7h12z"/><path d="m17 9-6 6M11 9l6 6"/></svg>';
 
 const tile = (letter, cls = '') => `<b${cls ? ` class="${cls}"` : ''}>${letter === ' ' ? '&nbsp;' : esc(letter)}</b>`;
 
-$('#kb-keys').innerHTML = KEY_ROWS.map(row => `<div class="kb-row">${[...row].map(k => {
-  const mark = !/[a-z]/.test(k);
-  return `<button class="k${mark ? ' mark' : ''}" type="button" data-key="${esc(k)}" aria-label="${k === "'" ? 'Apostrophe' : k === '-' ? 'Hyphen' : k}">${esc(k)}</button>`;
-}).join('')}</div>`).join('') + `<div class="kb-row">
-    <button class="k back" type="button" data-key="Backspace" aria-label="Delete letter">${BACKSPACE_ICON}</button>
+// Gboard layout on a 20-column grid: letters span 2 columns, so the middle row can sit half a key in.
+const letterKeys = row => [...row].map(k => `<button class="k pop" type="button" data-key="${k}">${k}</button>`).join('');
+$('#kb-keys').innerHTML = `
+  <div class="kb-row">${letterKeys('qwertyuiop')}</div>
+  <div class="kb-row indent">${letterKeys('asdfghjkl')}</div>
+  <div class="kb-row">
+    <button class="k fn wide pop" type="button" data-key="'" aria-label="Apostrophe">'</button>${letterKeys('zxcvbnm')}<button class="k fn wide" type="button" data-key="Backspace" aria-label="Delete letter">${BACKSPACE_ICON}</button>
+  </div>
+  <div class="kb-row">
+    <button class="k fn wide pop" type="button" data-key="-" aria-label="Hyphen">-</button>
+    <button class="k space" type="button" data-key=" " aria-label="Space"></button>
     <button id="check" class="k go" type="button">Check</button>
   </div>`;
 
@@ -615,12 +620,13 @@ function renderSegs() {
 function renderTyped() {
   const letters = [...session.typed];
   $('#typed').classList.toggle('long', letters.length > 9);
-  $('#typed').innerHTML = letters.map(l => tile(l)).join('') + '<b class="caret"></b>';
+  $('#typed').innerHTML = letters.map(l => tile(l, l === ' ' ? 'sp' : '')).join('') + '<b class="caret"></b>';
   if (!session.checked) setState(letters.length ? 'typing' : 'listen');
 }
 
 function typeKey(key) {
   if (session.checked) return;
+  if (key === ' ' && (!session.typed || session.typed.endsWith(' '))) return;
   if (key === 'Backspace') session.typed = session.typed.slice(0, -1);
   else if (session.typed.length < MAX_TYPED) session.typed += key;
   renderTyped();
@@ -647,9 +653,39 @@ function showWord() {
   lookup(word).catch(() => {});
 }
 
-$('#kb-keys').addEventListener('click', e => {
+const keys = $('#kb-keys');
+let pressedKey = null;
+let repeatTimer = 0;
+
+// Keys never take focus, so a physical Enter or Space can't re-press the last tapped key.
+$('.kb').addEventListener('mousedown', e => e.preventDefault());
+
+keys.addEventListener('pointerdown', e => {
   const key = e.target.closest('[data-key]');
-  if (key) typeKey(key.dataset.key);
+  if (!key) return;
+  pressedKey?.classList.remove('down');
+  pressedKey = key;
+  key.classList.add('down');
+  if (key.dataset.key === 'Backspace') {
+    typeKey('Backspace');
+    repeatTimer = setTimeout(() => { repeatTimer = setInterval(() => typeKey('Backspace'), 70); }, 450);
+  }
+});
+
+const releaseKey = () => {
+  clearTimeout(repeatTimer);
+  clearInterval(repeatTimer);
+  const key = pressedKey;
+  pressedKey = null;
+  if (key) setTimeout(() => key.classList.remove('down'), 80);
+};
+['pointerup', 'pointercancel', 'pointerleave'].forEach(type => keys.addEventListener(type, releaseKey));
+
+keys.addEventListener('click', e => {
+  const key = e.target.closest('[data-key]');
+  // Pointer presses on Backspace are handled on pointerdown so holding it repeats.
+  if (!key || (key.dataset.key === 'Backspace' && e.detail)) return;
+  typeKey(key.dataset.key);
 });
 $('#check').addEventListener('click', checkAnswer);
 
@@ -659,7 +695,7 @@ document.addEventListener('keydown', e => {
   const el = e.target instanceof Element ? e.target : document.body;
   if (el.closest('input, select, textarea')) return;
   const asking = !session.checked;
-  if (asking && /^[a-z'-]$/i.test(e.key)) typeKey(e.key.toLowerCase());
+  if (asking && /^[a-z' -]$/i.test(e.key)) typeKey(e.key.toLowerCase());
   else if (asking && e.key === 'Backspace') typeKey('Backspace');
   else if (e.key === 'Enter' && !el.closest('button')) {
     if (asking) checkAnswer();
