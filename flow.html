@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WordWise - practice flow mockups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="styles.css?v=4">
+<style>
+  body { padding: 0; }
+  .gallery { display: flex; flex-wrap: wrap; gap: 28px; padding: 28px; }
+  .single .gallery { padding: 0; gap: 0; }
+  .scr {
+    position: relative;
+    width: 390px;
+    height: 800px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 50px 18px 22px;
+    background: var(--bg);
+    border-radius: 34px;
+    border: 1px solid var(--border);
+    isolation: isolate;
+  }
+  .single .scr { border-radius: 0; border: 0; }
+  .scr::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+      radial-gradient(360px 300px at 90% -5%, var(--glow-a), transparent 70%),
+      radial-gradient(320px 320px at -15% 75%, var(--glow-b), transparent 70%);
+  }
+  .sb { position: absolute; top: 15px; left: 26px; right: 26px; display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; }
+
+  /* Session header */
+  .sh { display: grid; grid-template-columns: 38px 1fr 38px; align-items: center; gap: 10px; }
+  .sh .mid { text-align: center; line-height: 1.2; }
+  .sh .mid b { display: block; font-size: 15px; font-weight: 600; }
+  .sh .mid span { font-size: 12px; color: var(--muted); }
+  .segs { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin: 14px 0 0; }
+  .segs i { height: 5px; border-radius: 9px; background: var(--surface); }
+  .segs i.ok { background: var(--grad); box-shadow: 0 0 8px rgb(124 104 255 / .5); }
+  .segs i.bad { background: var(--bad); }
+  .segs i.now { background: var(--accent-soft); box-shadow: inset 0 0 0 1.5px var(--accent); }
+
+  .center { flex: 1; display: grid; place-items: center; align-content: center; gap: 8px; text-align: center; }
+  .wave { display: flex; gap: 4px; align-items: center; height: 26px; margin-top: 4px; }
+  .wave i { width: 4px; border-radius: 4px; background: var(--grad); opacity: .85; }
+  .cap { font-size: 13px; color: var(--muted); margin: 0; }
+  .chips { display: flex; gap: 7px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
+  .chips .hint { display: inline-flex; align-items: center; gap: 6px; }
+  .field {
+    display: grid; place-items: center; height: 64px; border-radius: 18px;
+    background: var(--surface); border: 1px solid var(--border);
+    font-size: 22px; font-weight: 500; color: var(--muted); letter-spacing: .02em;
+  }
+  .actions { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; margin-top: 10px; }
+  .actions .btn { padding-block: 15px; font-size: 16px; border-radius: 16px; }
+  .full { width: 100%; padding-block: 15px; font-size: 16px; border-radius: 16px; }
+
+  /* Letter tiles */
+  .tiles { display: flex; gap: 4px; justify-content: center; }
+  .tiles b {
+    width: 30px; height: 40px; display: grid; place-items: center; flex: none;
+    border-radius: 10px; background: var(--tile); border: 1px solid var(--border); border-bottom-width: 3px; border-bottom-color: var(--tile-edge);
+    font-size: 19px; font-weight: 500;
+  }
+  .tiles b.caret { background: transparent; border: 2px solid var(--accent); box-shadow: 0 0 12px rgb(124 104 255 / .45); }
+  .tiles b.good { background: var(--ok-soft); color: var(--ok); border-color: color-mix(in srgb, var(--ok) 55%, transparent); }
+  .tiles b.wrong { background: var(--bad-soft); color: var(--bad); border-color: var(--bad); text-decoration: line-through; text-decoration-thickness: 2px; }
+  .tiles b.add { background: var(--ok-soft); color: var(--ok); border-color: var(--ok); }
+  .tiles b.dim { opacity: .55; }
+
+  /* Compact player row */
+  .mini { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 20px; margin-top: 16px; }
+  .mini .orb { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; color: #fff; flex: none;
+    background: radial-gradient(circle at 35% 30%, #b3a8ff, #7b66ff 55%, #5a45e6); box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 14%, transparent), 0 8px 20px rgb(124 104 255 / .45); }
+  .mini .hint { padding: 7px 11px; font-size: 13px; }
+
+  /* Keyboard */
+  .kb { margin: 12px -18px -22px; padding: 8px 4px 26px; background: color-mix(in srgb, var(--card) 92%, transparent); border-top: 1px solid var(--border); display: grid; gap: 9px; }
+  .kb div { display: flex; justify-content: center; gap: 5px; }
+  .kb i { width: 32px; height: 42px; border-radius: 7px; background: var(--surface); display: grid; place-items: center; font-style: normal; font-size: 17px; }
+  .kb i.w { width: 48px; font-size: 13px; color: var(--muted); }
+  .kb i.sp { width: 180px; font-size: 13px; color: var(--muted); }
+  .kb i.go { width: 74px; background: var(--grad); color: var(--on-grad); font-size: 14px; font-weight: 600; }
+
+  /* Result states */
+  .badge { width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center; }
+  .badge.ok { background: var(--ok-soft); color: var(--ok); box-shadow: 0 0 0 12px color-mix(in srgb, var(--ok) 8%, transparent), 0 0 40px color-mix(in srgb, var(--ok) 40%, transparent); }
+  .result-title { font-size: 28px; font-weight: 600; letter-spacing: -.02em; margin: 14px 0 0; }
+  .word-big { font-size: 34px; font-weight: 600; letter-spacing: -.02em; margin: 0; }
+  .phon { display: inline-flex; gap: 8px; align-items: center; color: var(--muted); font-size: 15px; }
+  .def { max-width: 300px; margin: 6px auto 0; color: var(--text); font-size: 15px; }
+  .streakchip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: 99px; font-size: 13px; font-weight: 600;
+    background: color-mix(in srgb, var(--flame) 15%, transparent); color: var(--flame); }
+  .timer { position: relative; overflow: hidden; }
+  .timer::after { content: ""; position: absolute; left: 0; bottom: 0; height: 4px; width: 62%; background: rgb(13 16 36 / .35); }
+  .linkbtn { background: none; border: 0; color: var(--accent); font: inherit; font-size: 14px; font-weight: 500; padding: 10px; }
+
+  .panel { border-radius: 22px; padding: 16px; }
+  .lab { font-size: 12px; color: var(--muted); margin: 0 0 8px; text-align: left; }
+  .row2 { display: flex; justify-content: space-between; align-items: center; }
+  .tip { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 16px; background: var(--accent-soft); color: var(--accent-ink); font-size: 14px; text-align: left; }
+  .tip svg { flex: none; margin-top: 2px; }
+  .saved { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); }
+
+  /* Bottom sheet */
+  .dimmed { position: absolute; inset: 0; background: rgb(4 5 12 / .62); z-index: 1; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; height: 640px; padding: 12px 20px 22px; border-radius: 28px 28px 0 0;
+    border: 1px solid transparent; background: linear-gradient(var(--card), var(--card)) padding-box, var(--edge) border-box; display: flex; flex-direction: column; gap: 14px; }
+  .handle { width: 42px; height: 5px; border-radius: 9px; background: var(--border); margin: 0 auto 4px; }
+  .seg3 { display: grid; grid-template-columns: repeat(3, 1fr); padding: 4px; border-radius: 14px; background: var(--surface); }
+  .seg3 span { text-align: center; padding: 8px 0; border-radius: 10px; font-size: 14px; font-weight: 500; color: var(--muted); }
+  .seg3 span.on { background: var(--grad); color: var(--on-grad); font-weight: 600; }
+  .pos { font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin: 0; }
+  .defs { margin: 0; padding-left: 20px; display: grid; gap: 10px; font-size: 15px; }
+  .defs li::marker { color: var(--accent); font-weight: 600; }
+  .ex { margin: 4px 0 0; padding-left: 10px; border-left: 3px solid var(--accent-2); color: var(--muted); font-style: italic; font-size: 14px; }
+
+  /* Summary */
+  .sum-top { display: flex; align-items: center; gap: 18px; margin-top: 18px; }
+  .stats3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+  .stats3 div { padding: 10px; border-radius: 16px; background: var(--surface); text-align: center; }
+  .stats3 b { display: block; font-size: 20px; font-weight: 600; }
+  .stats3 span { font-size: 12px; color: var(--muted); }
+  .wins { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .win { display: flex; gap: 10px; align-items: center; padding: 12px; border-radius: 18px; }
+  .win .ic { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; flex: none; }
+  .win b { display: block; font-size: 14px; font-weight: 600; line-height: 1.2; }
+  .win span { font-size: 12px; color: var(--muted); }
+  .wl { display: grid; gap: 6px; margin-top: 12px; }
+  .wl div { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 14px; background: var(--surface); font-size: 14px; }
+  .wl div i { font-style: normal; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; flex: none; }
+  .wl .k i { background: var(--ok-soft); color: var(--ok); }
+  .wl .x i { background: var(--bad-soft); color: var(--bad); }
+  .wl em { margin-left: auto; font-style: normal; font-size: 12.5px; color: var(--muted); }
+  .wl .x em s { color: var(--bad); }
+</style>
+</head>
+<body>
+<div class="gallery">
+
+  <!-- 1. Listening -->
+  <section class="scr" id="listen">
+    <div class="sb"><span>9:41</span><span>100%</span></div>
+    <div class="sh">
+      <button class="icon-btn" aria-label="End"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      <div class="mid"><b>Word 3 of 10</b><span>Commonly misspelled</span></div>
+      <button class="icon-btn" aria-label="Voice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+    </div>
+    <div class="segs"><i class="ok"></i><i class="ok"></i><i class="now"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="center">
+      <button class="play-orb" aria-label="Play"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg></button>
+      <div class="wave"><i style="height:8px"></i><i style="height:16px"></i><i style="height:24px"></i><i style="height:12px"></i><i style="height:20px"></i><i style="height:26px"></i><i style="height:14px"></i><i style="height:9px"></i><i style="height:18px"></i><i style="height:10px"></i></div>
+      <p class="cap">Playing&hellip; tap to hear it again</p>
+      <div class="chips">
+        <button class="hint">Slower</button>
+        <button class="hint">In a sentence</button>
+        <button class="hint">Meaning</button>
+      </div>
+    </div>
+    <div class="field">Tap here and type</div>
+    <div class="actions"><button class="btn ghost">Skip</button><button class="btn">Check</button></div>
+  </section>
+
+  <!-- 2. Typing -->
+  <section class="scr" id="typing">
+    <div class="sb"><span>9:41</span><span>100%</span></div>
+    <div class="sh">
+      <button class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      <div class="mid"><b>Word 3 of 10</b><span>Commonly misspelled</span></div>
+      <span></span>
+    </div>
+    <div class="segs"><i class="ok"></i><i class="ok"></i><i class="now"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="mini card" style="margin-bottom:0">
+      <div class="orb"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg></div>
+      <div style="flex:1;min-width:0"><b style="font-size:15px;font-weight:600">Hear it again</b><div class="cap" style="font-size:12px">Player shrinks while you type</div></div>
+      <button class="hint">Slower</button>
+    </div>
+    <div class="center" style="gap:14px">
+      <p class="lab" style="text-align:center;margin:0">Your spelling</p>
+      <div class="tiles"><b>n</b><b>e</b><b>c</b><b>c</b><b>e</b><b>s</b><b class="caret"></b></div>
+      <p class="cap">Each letter becomes a tile as you type</p>
+    </div>
+    <div class="actions"><button class="btn ghost">Skip</button><button class="btn">Check</button></div>
+    <div class="kb">
+      <div><i>q</i><i>w</i><i>e</i><i>r</i><i>t</i><i>y</i><i>u</i><i>i</i><i>o</i><i>p</i></div>
+      <div><i>a</i><i>s</i><i>d</i><i>f</i><i>g</i><i>h</i><i>j</i><i>k</i><i>l</i></div>
+      <div><i class="w">&uarr;</i><i>z</i><i>x</i><i>c</i><i>v</i><i>b</i><i>n</i><i>m</i><i class="w">&larr;</i></div>
+      <div><i class="w">123</i><i class="sp">space</i><i class="go">Check</i></div>
+    </div>
+  </section>
+
+  <!-- 3. Correct -->
+  <section class="scr" id="correct">
+    <div class="sb"><span>9:41</span><span>100%</span></div>
+    <div class="sh">
+      <button class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      <div class="mid"><b>Word 3 of 10</b><span>Commonly misspelled</span></div>
+      <span></span>
+    </div>
+    <div class="segs"><i class="ok"></i><i class="ok"></i><i class="ok"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="center">
+      <div class="badge ok"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19 7"/></svg></div>
+      <p class="result-title">Correct</p>
+      <span class="streakchip"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1 3.5-1.5 5-1.5 8 0 1.5 1 2.5 2 2.5 1.6 0 2.5-1.3 2.5-3 2 1.6 3 4 3 6 0 3.9-2.9 6.5-6.5 6.5S5 19.4 5 15.5C5 10 10 8 12 2z"/></svg>3 in a row</span>
+      <div class="card panel" style="margin:22px 0 0;width:100%">
+        <p class="word-big">necessary</p>
+        <div class="phon">/&#712;n&#603;s&#601;s&#601;&#633;i/ <button class="chip">Play</button></div>
+        <p class="def">Needed to be done or present; essential.</p>
+      </div>
+    </div>
+    <button class="btn full timer">Next word</button>
+    <p class="cap" style="text-align:center;margin-top:8px">Moves on by itself in 2 seconds</p>
+  </section>
+
+  <!-- 4. Wrong -->
+  <section class="scr" id="wrong">
+    <div class="sb"><span>9:41</span><span>100%</span></div>
+    <div class="sh">
+      <button class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      <div class="mid"><b>Word 3 of 10</b><span>Commonly misspelled</span></div>
+      <span></span>
+    </div>
+    <div class="segs"><i class="ok"></i><i class="ok"></i><i class="bad"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div style="margin-top:22px">
+      <p class="result-title" style="margin:0;color:var(--bad)">Not quite</p>
+      <p class="cap" style="font-size:15px;margin-top:2px">The word was <b style="color:var(--text)">necessary</b></p>
+    </div>
+    <div class="card panel" style="margin:18px 0 0">
+      <p class="lab">You wrote</p>
+      <div class="tiles"><b class="dim">n</b><b class="dim">e</b><b class="dim">c</b><b class="wrong">c</b><b class="dim">e</b><b class="dim">s</b><b class="dim">s</b><b class="dim">a</b><b class="dim">r</b><b class="dim">y</b></div>
+      <p class="lab" style="margin-top:16px">Correct spelling</p>
+      <div class="tiles"><b class="good">n</b><b class="good">e</b><b class="good">c</b><b class="good">e</b><b class="add">s</b><b class="add">s</b><b class="good">a</b><b class="good">r</b><b class="good">y</b></div>
+    </div>
+    <div class="tip" style="margin-top:12px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg>
+      <span>You added an extra <b>c</b>. Remember: one <b>c</b>, two <b>s</b>.</span>
+    </div>
+    <div class="row2" style="margin-top:12px">
+      <span class="saved"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>Saved to My mistakes</span>
+      <button class="linkbtn" style="padding:0">Full entry</button>
+    </div>
+    <div style="flex:1"></div>
+    <div class="actions"><button class="btn ghost">Hear it</button><button class="btn">Next word</button></div>
+  </section>
+
+  <!-- 5. Word details sheet -->
+  <section class="scr" id="details">
+    <div class="sb"><span>9:41</span><span>100%</span></div>
+    <div class="sh">
+      <button class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      <div class="mid"><b>Word 3 of 10</b><span>Commonly misspelled</span></div>
+      <span></span>
+    </div>
+    <div class="segs"><i class="ok"></i><i class="ok"></i><i class="bad"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <p class="result-title" style="margin-top:22px;color:var(--bad)">Not quite</p>
+    <div class="dimmed"></div>
+    <div class="sheet">
+      <div class="handle"></div>
+      <div class="row2">
+        <div>
+          <p class="word-big">necessary</p>
+          <div class="phon">/&#712;n&#603;s&#601;s&#601;&#633;i/ &middot; 4 syllables</div>
+        </div>
+        <button class="icon-btn" aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn small">Speak</button>
+        <button class="btn ghost small">UK</button>
+        <button class="btn ghost small">US</button>
+        <button class="btn ghost small">Spell out</button>
+      </div>
+      <div class="seg3"><span class="on">Meaning</span><span>Examples</span><span>Similar</span></div>
+      <p class="pos">Adjective</p>
+      <ol class="defs">
+        <li>Needed to be done, achieved, or present; essential.
+          <p class="ex">"Food is necessary for life."</p></li>
+        <li>Determined by natural laws and therefore unavoidable.</li>
+      </ol>
+      <p class="pos">Noun</p>
+      <ol class="defs">
+        <li>The basic requirements of life, such as food and warmth.</li>
+      </ol>
+      <div class="related" style="margin-top:auto"><span>Similar</span><button class="chip link">essential</button><button class="chip link">required</button><button class="chip link">vital</button></div>
+    </div>
+  </section>
+
+  <!-- 6. Summary -->
+  <section class="scr" id="summary">
+    <div class="sb"><span>9:41</span><span>100%</span></div>
+    <div class="sh">
+      <button class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      <div class="mid"><b>Session complete</b><span>Commonly misspelled</span></div>
+      <span></span>
+    </div>
+    <div class="sum-top">
+      <div class="ring big" style="--pct:80;--size:120px"><div><strong>80%</strong><span>accuracy</span></div></div>
+      <div>
+        <p class="result-title" style="margin:0;font-size:24px">Great work, Kaizen</p>
+        <p class="cap" style="font-size:14px">8 of 10 spelled right</p>
+      </div>
+    </div>
+    <div class="stats3"><div><b style="color:var(--ok)">8</b><span>correct</span></div><div><b style="color:var(--bad)">2</b><span>missed</span></div><div><b>3:40</b><span>time</span></div></div>
+    <div class="wins">
+      <div class="win card" style="margin:0"><div class="ic" style="background:color-mix(in srgb,var(--flame) 16%,transparent);color:var(--flame)"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1 3.5-1.5 5-1.5 8 0 1.5 1 2.5 2 2.5 1.6 0 2.5-1.3 2.5-3 2 1.6 3 4 3 6 0 3.9-2.9 6.5-6.5 6.5S5 19.4 5 15.5C5 10 10 8 12 2z"/></svg></div><div><b>5-day streak</b><span>+1 today</span></div></div>
+      <div class="win card" style="margin:0"><div class="ic" style="background:var(--accent-soft);color:var(--accent)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19 7"/></svg></div><div><b>Goal reached</b><span>10 of 10 today</span></div></div>
+    </div>
+    <div class="wl">
+      <div class="x"><i>&times;</i>necessary<em>you wrote nec<s>c</s>essary</em></div>
+      <div class="x"><i>&times;</i>rhythm<em>you wrote rhyth<s>e</s>m</em></div>
+      <div class="k"><i>&#10003;</i>separate<em>correct</em></div>
+      <div class="k"><i>&#10003;</i>conscience<em>correct</em></div>
+      <div class="k"><i>&#10003;</i>6 more words<em>all correct</em></div>
+    </div>
+    <div style="flex:1"></div>
+    <button class="btn full">Practise the 2 mistakes</button>
+    <button class="btn ghost full" style="margin-top:8px">Back to home</button>
+  </section>
+
+</div>
+<script>
+  const s = new URLSearchParams(location.search).get('s');
+  if (s) {
+    document.body.classList.add('single');
+    document.querySelectorAll('.scr').forEach(el => { if (el.id !== s) el.style.display = 'none'; });
+  }
+</script>
+</body>
+</html>
