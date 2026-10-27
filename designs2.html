@@ -45,8 +45,8 @@
   .blob .ck { position: absolute; top: 58%; width: 14%; height: 9%; background: #ff5f8f; opacity: .5; border-radius: 50%; }
   .blob .ck.l { left: 13%; } .blob .ck.r { right: 13%; }
 
-  .lt { display: flex; gap: 4px; justify-content: center; }
-  .lt b { width: 25px; height: 33px; display: grid; place-items: center; font-size: 16px; }
+  .lt { display: flex; gap: 3px; justify-content: center; }
+  .lt b { width: 21px; height: 31px; flex: none; display: grid; place-items: center; font-size: 15px; }
 
   /* A. Dusk Clay */
   .dusk { background: #1b1633; color: #f3efff; font-family: Nunito, sans-serif; }
@@ -99,8 +99,8 @@
   .pglass .ring { width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0;
     background: conic-gradient(from 200deg, #8f7bff, #ff9fb8, #ffb38a 60%, rgb(36 31 61 / .08) 0); }
   .pglass .ring div { width: 68px; height: 68px; border-radius: 50%; background: #fbf9ff; display: grid; place-items: center; font-weight: 800; font-size: 17px; }
-  .pglass .week { display: flex; gap: 5px; margin-top: 8px; }
-  .pglass .week i { width: 16px; height: 16px; border-radius: 6px; background: rgb(36 31 61 / .08); }
+  .pglass .week { display: flex; gap: 4px; margin-top: 8px; }
+  .pglass .week i { width: 12px; height: 12px; border-radius: 4px; background: rgb(36 31 61 / .08); }
   .pglass .week i.f { background: linear-gradient(135deg, #8f7bff, #ff9fb8); }
   .pglass .cont { padding: 14px 14px 14px 16px; display: flex; align-items: center; gap: 12px; }
   .pglass .cont h4 { font-size: 16px; font-weight: 700; }
@@ -163,8 +163,8 @@
   .bento .peach { background: linear-gradient(150deg, #ffe0cc, #ffc3a1); }
   .bento .lav { background: linear-gradient(150deg, #e7e0ff, #cfc2ff); }
   .bento .mint { background: linear-gradient(150deg, #d7f7ea, #a9ecd2); }
-  .bento .drop { position: absolute; right: 10px; bottom: 10px; width: 40px; height: 48px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
-    background: radial-gradient(circle at 36% 30%, #fff3c4, #ffb03b 40%, #ff6a2b); box-shadow: inset -4px -6px 0 rgb(0 0 0 / .08), 0 6px 12px rgb(255 106 43 / .35); }
+  .bento .drop { position: absolute; right: 16px; bottom: 16px; width: 36px; height: 36px; border-radius: 50% 0 50% 50%; transform: rotate(-45deg);
+    background: radial-gradient(circle at 40% 60%, #fff3c4, #ffb03b 40%, #ff6a2b); box-shadow: inset -3px 4px 0 rgb(0 0 0 / .08), 0 6px 12px rgb(255 106 43 / .35); }
   .bento .ring { width: 60px; height: 60px; border-radius: 50%; background: conic-gradient(#6c54ff 0 60%, rgb(108 84 255 / .18) 0); display: grid; place-items: center; position: absolute; right: 10px; bottom: 10px; }
   .bento .ring div { width: 46px; height: 46px; border-radius: 50%; background: #ddd4ff; }
   .bento .play { width: 54px; height: 54px; border-radius: 50%; background: #1d2030; color: #fff; display: grid; place-items: center; box-shadow: 0 8px 16px rgb(29 32 48 / .3); flex-shrink: 0; }
@@ -226,7 +226,7 @@
   .sky .stats span { font-size: 10px; color: #7d76a8; font-weight: 800; }
   .sky .btn { background: #ffd447; color: #3a2a00; text-align: center; font-weight: 900; font-size: 18px; padding: 14px; border-radius: 24px; box-shadow: inset 0 2px 0 rgb(255 255 255 / .5), 0 6px 0 #d9a400, 0 16px 26px rgb(40 30 120 / .3); }
   .sky .chips { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
-  .sky .chip { background: rgb(255 255 255 / .22); color: #fff; padding: 8px 13px; border-radius: 99px; font-weight: 800; font-size: 12px; }
+  .sky .chip { background: rgb(255 255 255 / .22); color: #fff; padding: 8px 11px; white-space: nowrap; border-radius: 99px; font-weight: 800; font-size: 12px; }
   .sky .nav { display: flex; justify-content: space-around; margin: 0 14px 14px; padding: 12px; background: #fff; border-radius: 26px; font-weight: 800; font-size: 11px; color: #a39dcc; box-shadow: 0 5px 0 #d9d4ff; position: relative; z-index: 2; }
   .sky .nav .on { color: #5868ff; }
   .sky .playp { width: 128px; height: 128px; border-radius: 50%; margin: 6px auto 0; display: grid; place-items: center; background: radial-gradient(circle at 34% 28%, #a8b4ff, #5868ff 60%); box-shadow: 0 8px 0 #3e4bd6, 0 18px 30px rgb(88 104 255 / .4); }
