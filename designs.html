@@ -33,7 +33,11 @@
 
   /* 1. Pop Brutal */
   .brutal { background: #fff4d6; color: #111; font-family: "Space Grotesk", sans-serif; }
-  .brutal .logo { font-family: "Archivo Black"; font-size: 22px; letter-spacing: -.02em; }
+  .brutal .logo { font-family: "Archivo Black"; font-size: 19px; letter-spacing: -.02em; }
+  .brutal .revise { background: #fff; padding: 12px; }
+  .brutal .revise small { font-weight: 700; letter-spacing: .08em; font-size: 11px; }
+  .brutal .revise .row { flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .brutal .revise .row span { border: 2px solid #111; border-radius: 99px; padding: 3px 10px; font-weight: 700; font-size: 12px; background: #ffd84d; }
   .brutal .box { border: 3px solid #111; border-radius: 14px; box-shadow: 5px 5px 0 #111; }
   .brutal .hero { background: #ff6b9a; padding: 16px; }
   .brutal .hero small { font-weight: 700; letter-spacing: .08em; font-size: 11px; }
@@ -43,7 +47,7 @@
   .brutal .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .brutal .tile { padding: 12px; font-weight: 700; font-size: 14px; }
   .brutal .tile span { display: block; font-size: 11px; font-weight: 500; margin-top: 2px; }
-  .brutal .sticker { position: absolute; right: 14px; top: 46px; background: #ffd84d; transform: rotate(8deg); padding: 6px 10px; font-family: "Archivo Black"; font-size: 13px; z-index: 4; }
+  .brutal .sticker { position: absolute; right: 10px; top: 42px; background: #ffd84d; transform: rotate(8deg); padding: 6px 10px; font-family: "Archivo Black"; font-size: 13px; z-index: 4; }
   .brutal .nav { display: flex; justify-content: space-around; border-top: 3px solid #111; padding: 10px 0 14px; font-weight: 700; font-size: 12px; background: #fff; position: relative; z-index: 2; }
   .brutal .nav .on { background: #111; color: #fff4d6; padding: 2px 10px; border-radius: 6px; }
   .brutal .play { width: 130px; height: 130px; background: #ffd84d; display: grid; place-items: center; margin: 8px auto 0; border-radius: 24px; }
@@ -103,7 +107,7 @@
   .arcade::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgb(0 0 0 / .28) 0 2px, transparent 2px 4px); pointer-events: none; z-index: 5; }
   .arcade .glow { text-shadow: 0 0 6px #39ff88, 0 0 14px rgb(57 255 136 / .5); }
   .arcade h3 { font-size: 34px; line-height: 1; }
-  .arcade .dim { color: #1d8a4a; }
+  .arcade .dim { color: #23a85a; text-shadow: none; }
   .arcade .pink { color: #ff3df2; text-shadow: 0 0 8px #ff3df2; }
   .arcade .yellow { color: #ffe14d; text-shadow: 0 0 8px #ffe14d; }
   .arcade .frame { border: 2px solid #39ff88; padding: 10px 12px; box-shadow: 0 0 12px rgb(57 255 136 / .35) inset; }
@@ -181,6 +185,10 @@
           <div class="box tile" style="background:#9ff0b5">Mistakes<span>8 words</span></div>
           <div class="box tile" style="background:#fff">My words<span>12 words</span></div>
           <div class="box tile" style="background:#ffb26b">Import<span>paste list</span></div>
+        </div>
+        <div class="box revise">
+          <small>REVISE THESE</small>
+          <div class="row"><span>necessary</span><span>rhythm</span><span>separate</span></div>
         </div>
       </div>
       <div class="nav"><span class="on">HOME</span><span>PLAY</span><span>WORDS</span><span>STATS</span></div>
@@ -427,5 +435,9 @@
       <div class="fonts">Playfair Display + Inter</div>
     </div>
   </section>
+  <script>
+    var only = new URLSearchParams(location.search).get('only');
+    if (only) document.querySelectorAll('section.theme, .page-head').forEach(function (el) { el.hidden = el.id !== only; });
+  </script>
 </body>
 </html>
