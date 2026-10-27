@@ -60,8 +60,13 @@ $('#gate-reveal').addEventListener('click', () => {
 $('#theme-toggle').addEventListener('click', () => {
   const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
   document.documentElement.dataset.theme = next;
+  $('meta[name="theme-color"]').content = next === 'dark' ? '#0a0c18' : '#f4f3fb';
   store.set('wordwise-theme', next);
 });
+
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
 
 if (store.get(AUTH_KEY, '') === ACCESS_USER) unlockApp();
 
