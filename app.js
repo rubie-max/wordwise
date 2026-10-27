@@ -656,11 +656,12 @@ $('#check').addEventListener('click', checkAnswer);
 // A physical keyboard (computer or tablet) types into the same tiles.
 document.addEventListener('keydown', e => {
   if ($('#session').hidden || !$('#sheet-wrap').hidden || e.ctrlKey || e.metaKey || e.altKey) return;
-  if (e.target.closest('input, select, textarea')) return;
+  const el = e.target instanceof Element ? e.target : document.body;
+  if (el.closest('input, select, textarea')) return;
   const asking = !session.checked;
   if (asking && /^[a-z'-]$/i.test(e.key)) typeKey(e.key.toLowerCase());
   else if (asking && e.key === 'Backspace') typeKey('Backspace');
-  else if (e.key === 'Enter' && !e.target.closest('button')) {
+  else if (e.key === 'Enter' && !el.closest('button')) {
     if (asking) checkAnswer();
     else next();
   } else return;
