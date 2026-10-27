@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
   <title>WordWise - Dictation + Dictionary</title>
   <meta name="description" content="Practise spelling dictation and see full dictionary details for every word: pronunciation, meanings, examples, synonyms and origin.">
   <meta name="theme-color" content="#0a0c18">
@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap">
-  <link rel="stylesheet" href="styles.css?v=4">
+  <link rel="stylesheet" href="styles.css?v=5">
 </head>
 <body class="locked">
   <div id="gate" class="gate">
@@ -195,62 +195,6 @@
         </div>
       </form>
 
-      <div id="session" hidden>
-        <div class="card session-card">
-          <div class="session-top">
-            <div>
-              <p class="eyebrow" id="session-list"></p>
-              <p class="counter" id="progress-text"></p>
-            </div>
-            <button id="quit" class="btn ghost small" type="button">End session</button>
-          </div>
-          <div class="progress"><div id="progress-bar"></div></div>
-
-          <div class="listen-stage">
-            <button id="play" class="play-orb" type="button" aria-label="Play word">
-              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>
-            </button>
-            <p class="muted small">Tap to hear the word again</p>
-            <div class="hint-row">
-              <button id="play-slow" class="hint" type="button">Slower</button>
-              <button id="play-sentence" class="hint" type="button">In a sentence</button>
-              <button id="play-meaning" class="hint" type="button">Meaning hint</button>
-            </div>
-          </div>
-
-          <form id="answer-form" class="answer">
-            <input id="answer" type="text" placeholder="Type what you hear" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
-            <div class="answer-actions">
-              <button id="skip" class="btn ghost" type="button">Skip</button>
-              <button id="check" class="btn" type="submit">Check</button>
-            </div>
-          </form>
-          <div id="feedback" aria-live="polite"></div>
-        </div>
-        <div id="word-details"></div>
-      </div>
-
-      <div id="summary" class="card summary" hidden>
-        <p class="eyebrow accent">Session complete</p>
-        <div class="summary-top">
-          <div id="summary-ring" class="ring big" style="--pct: 0">
-            <div><strong id="summary-pct">0%</strong><span>accuracy</span></div>
-          </div>
-          <div>
-            <h2 id="summary-message"></h2>
-            <div class="summary-stats">
-              <div><b id="summary-correct">0</b><span>Correct</span></div>
-              <div><b id="summary-missed">0</b><span>Missed</span></div>
-              <div><b id="summary-total">0</b><span>Words</span></div>
-            </div>
-          </div>
-        </div>
-        <ul id="summary-list" class="summary-list"></ul>
-        <div class="row">
-          <button id="retry-mistakes" class="btn" type="button">Practise the wrong words again</button>
-          <button id="new-session" class="btn ghost" type="button">Back to home</button>
-        </div>
-      </div>
     </section>
 
     <!-- Dictionary -->
@@ -308,13 +252,179 @@
     </section>
   </main>
 
+  <!-- Practice session (full screen) -->
+  <div id="session" class="play" data-state="listen" hidden>
+    <div class="play-col">
+      <div class="play-head">
+        <button id="quit" class="icon-btn" type="button" aria-label="End session" title="End session">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+        <div class="play-title"><b id="progress-text"></b><span id="session-list"></span></div>
+        <div class="voice-menu play-voice">
+          <button id="session-voice" class="icon-btn" type="button" aria-label="Voice settings" aria-expanded="false" title="Voice settings">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+          </button>
+        </div>
+      </div>
+      <div id="segs" class="segs"></div>
+
+      <!-- Listen and type -->
+      <div class="ask">
+        <div class="listen-big">
+          <button id="play" class="play-orb" type="button" aria-label="Play word">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>
+          </button>
+          <div class="wave" aria-hidden="true"><i style="--h:8px;--i:0"></i><i style="--h:16px;--i:1"></i><i style="--h:24px;--i:2"></i><i style="--h:12px;--i:3"></i><i style="--h:20px;--i:4"></i><i style="--h:26px;--i:5"></i><i style="--h:14px;--i:6"></i><i style="--h:9px;--i:7"></i><i style="--h:18px;--i:8"></i><i style="--h:10px;--i:9"></i></div>
+          <p id="play-cap" class="cap">Tap to hear the word again</p>
+          <div class="hint-row">
+            <button id="play-slow" class="hint" type="button">Slower</button>
+            <button id="play-sentence" class="hint" type="button">In a sentence</button>
+            <button id="play-meaning" class="hint" type="button">Meaning</button>
+          </div>
+        </div>
+        <div class="mini card">
+          <button id="play-mini" class="mini-orb" type="button" aria-label="Play word">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>
+          </button>
+          <div class="mini-text"><b>Hear it again</b><span>Tap the circle to replay the word</span></div>
+          <button id="play-slow-mini" class="hint" type="button">Slower</button>
+        </div>
+        <form id="answer-form" class="answer-form">
+          <label class="speller empty">
+            <span class="lab">Your spelling</span>
+            <span id="typed" class="tiles"></span>
+            <span class="speller-ph">Tap here and type</span>
+            <span class="cap">Each letter becomes a tile as you type</span>
+            <input id="answer" type="text" maxlength="40" aria-label="Type the word you hear" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done">
+          </label>
+          <div class="play-actions">
+            <button id="skip" class="btn ghost" type="button">Skip</button>
+            <button id="check" class="btn" type="submit">Check</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Correct -->
+      <div class="res res-ok" aria-live="polite">
+        <div class="res-body">
+          <div class="badge-ok">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7"/></svg>
+          </div>
+          <p class="res-title">Correct</p>
+          <span id="in-a-row" class="streakchip" hidden>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c1 3.5-1.5 5-1.5 8 0 1.5 1 2.5 2 2.5 1.6 0 2.5-1.3 2.5-3 2 1.6 3 4 3 6 0 3.9-2.9 6.5-6.5 6.5S5 19.4 5 15.5C5 10 10 8 12 2z"/></svg>
+            <span></span>
+          </span>
+          <div id="ok-card" class="card res-card ok-card" title="Open the full entry">
+            <p id="ok-word" class="word-big"></p>
+            <div id="ok-phon" class="phon"></div>
+            <p id="ok-def" class="def"></p>
+          </div>
+        </div>
+        <div class="res-foot">
+          <button id="ok-next" class="btn full timer next-btn" type="button">Next word</button>
+          <p id="ok-cap" class="cap">Moves on by itself in 2 seconds</p>
+        </div>
+      </div>
+
+      <!-- Wrong or skipped -->
+      <div class="res res-bad" aria-live="polite">
+        <div class="res-body">
+          <p id="bad-title" class="res-title bad">Not quite</p>
+          <p class="cap big-cap">The word was <b id="bad-word"></b></p>
+          <div class="card res-card">
+            <div id="bad-typed-wrap">
+              <p class="lab">You wrote</p>
+              <div id="bad-typed" class="tiles"></div>
+            </div>
+            <p class="lab spaced">Correct spelling</p>
+            <div id="bad-correct" class="tiles"></div>
+          </div>
+          <div id="bad-tip" class="tip">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg>
+            <span></span>
+          </div>
+          <div class="saved-row">
+            <span class="saved"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>Saved to My mistakes</span>
+            <button id="bad-entry" class="linkbtn" type="button">Full entry</button>
+          </div>
+          <div id="bad-meaning" class="card res-card meaning-card" hidden>
+            <p class="lab">Meaning</p>
+            <p id="bad-def" class="res-def"></p>
+            <p id="bad-ex" class="example"></p>
+          </div>
+        </div>
+        <div class="res-foot play-actions">
+          <button id="bad-hear" class="btn ghost" type="button">Hear it</button>
+          <button id="bad-next" class="btn next-btn" type="button">Next word</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Session summary (full screen) -->
+  <div id="summary" class="play" hidden>
+    <div class="play-col">
+      <div class="play-head">
+        <button id="summary-close" class="icon-btn" type="button" aria-label="Back to home" title="Back to home">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+        <div class="play-title"><b>Session complete</b><span id="summary-list-name"></span></div>
+        <span></span>
+      </div>
+      <div class="res-body">
+        <div class="sum-top">
+          <div id="summary-ring" class="ring big" style="--pct: 0">
+            <div><strong id="summary-pct">0%</strong><span>accuracy</span></div>
+          </div>
+          <div>
+            <p id="summary-message" class="res-title"></p>
+            <p id="summary-sub" class="cap"></p>
+          </div>
+        </div>
+        <div class="stats3">
+          <div><b id="summary-correct">0</b><span>correct</span></div>
+          <div><b id="summary-missed">0</b><span>missed</span></div>
+          <div><b id="summary-time">0:00</b><span>time</span></div>
+        </div>
+        <div class="wins">
+          <div class="card win">
+            <div class="win-ic flame-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c1 3.5-1.5 5-1.5 8 0 1.5 1 2.5 2 2.5 1.6 0 2.5-1.3 2.5-3 2 1.6 3 4 3 6 0 3.9-2.9 6.5-6.5 6.5S5 19.4 5 15.5C5 10 10 8 12 2z"/></svg></div>
+            <div><b id="summary-streak"></b><span id="summary-streak-sub"></span></div>
+          </div>
+          <div class="card win">
+            <div id="summary-goal-icon" class="win-ic goal-ic">
+              <svg class="tick" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7"/></svg>
+              <svg class="target" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/></svg>
+            </div>
+            <div><b id="summary-goal"></b><span id="summary-goal-sub"></span></div>
+          </div>
+        </div>
+        <div id="summary-list" class="wl"></div>
+      </div>
+      <div class="res-foot">
+        <button id="retry-mistakes" class="btn full" type="button">Practise the mistakes</button>
+        <button id="new-session" class="btn ghost full" type="button">Back to home</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Full entry sheet -->
+  <div id="sheet-wrap" class="sheet-wrap" hidden>
+    <div class="dimmed" data-close-sheet></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-word">
+      <div class="handle" aria-hidden="true"></div>
+      <div id="sheet-body"></div>
+    </div>
+  </div>
+
   <div id="toast" class="toast" hidden></div>
 
   <footer>
     Definitions from the <a href="https://dictionaryapi.dev/" target="_blank" rel="noopener">Free Dictionary API</a>. Progress is saved only in this browser.
   </footer>
 
-  <script src="words.js?v=4"></script>
-  <script src="app.js?v=4"></script>
+  <script src="words.js?v=5"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>

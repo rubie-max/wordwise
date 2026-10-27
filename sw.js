@@ -1,4 +1,4 @@
-const CACHE = 'wordwise-v1';
+const CACHE = 'wordwise-v2';
 const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'words.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', event => {

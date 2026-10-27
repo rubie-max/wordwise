@@ -99,8 +99,9 @@ function bindPopover(toggleSel, panelSel) {
   const panel = $(panelSel);
   toggle.addEventListener('click', e => {
     e.stopPropagation();
-    const open = panel.hidden;
+    const open = panel.hidden || panel.parentElement !== toggle.parentElement;
     closePopovers();
+    toggle.parentElement.append(panel);
     panel.hidden = !open;
     toggle.setAttribute('aria-expanded', String(open));
   });
@@ -108,9 +109,14 @@ function bindPopover(toggleSel, panelSel) {
 }
 
 bindPopover('#voice-toggle', '#voice-panel');
+bindPopover('#session-voice', '#voice-panel');
 bindPopover('#account-toggle', '#account-panel');
 document.addEventListener('click', closePopovers);
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closePopovers(); });
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  closePopovers();
+  closeSheet();
+});
 
 /* ---------- Tabs ---------- */
 
@@ -170,14 +176,24 @@ showRate(+$('#rate').value);
 $('#rate').addEventListener('input', e => { store.set('rate', +e.target.value); showRate(+e.target.value); });
 $('#voice').addEventListener('change', e => store.set('voice', e.target.value));
 
+let speakId = 0;
+
+function setSpeaking(on) {
+  $('#session').classList.toggle('speaking', on);
+  $('#play-cap').textContent = on ? 'Playing\u2026 tap to hear it again' : 'Tap to hear the word again';
+}
+
 function speak(text, rate = +$('#rate').value) {
   if (!canSpeak || !text) return;
   speechSynthesis.cancel();
+  const id = ++speakId;
   const u = new SpeechSynthesisUtterance(text);
   const voice = voices.find(v => v.name === $('#voice').value);
   if (voice) u.voice = voice;
   u.lang = voice ? voice.lang : 'en-US';
   u.rate = rate;
+  u.onstart = () => setSpeaking(true);
+  u.onend = u.onerror = () => { if (id === speakId) setSpeaking(false); };
   speechSynthesis.speak(u);
 }
 
@@ -216,6 +232,22 @@ function accentOf(url) {
   return m ? m[1].toUpperCase() : 'Audio';
 }
 
+function groupMeanings(entries) {
+  const groups = new Map();
+  for (const m of entries.flatMap(e => e.meanings || [])) {
+    const g = groups.get(m.partOfSpeech) || { defs: [], syn: new Set(), ant: new Set() };
+    g.defs.push(...m.definitions);
+    (m.synonyms || []).forEach(s => g.syn.add(s));
+    (m.antonyms || []).forEach(a => g.ant.add(a));
+    m.definitions.forEach(d => {
+      (d.synonyms || []).forEach(s => g.syn.add(s));
+      (d.antonyms || []).forEach(a => g.ant.add(a));
+    });
+    groups.set(m.partOfSpeech, g);
+  }
+  return groups;
+}
+
 const chips = words => words.slice(0, 20)
   .map(w => `<button class="chip link" data-lookup="${esc(w)}">${esc(w)}</button>`).join('');
 
@@ -241,19 +273,7 @@ function wordCard(word, entries) {
       ${p.audio ? `<button class="chip" data-audio="${esc(p.audio)}" title="Play recorded pronunciation">Play ${accentOf(p.audio)}</button>` : ''}
     </span>`).join('');
 
-  const groups = new Map();
-  for (const m of entries.flatMap(e => e.meanings || [])) {
-    const g = groups.get(m.partOfSpeech) || { defs: [], syn: new Set(), ant: new Set() };
-    g.defs.push(...m.definitions);
-    (m.synonyms || []).forEach(s => g.syn.add(s));
-    (m.antonyms || []).forEach(a => g.ant.add(a));
-    m.definitions.forEach(d => {
-      (d.synonyms || []).forEach(s => g.syn.add(s));
-      (d.antonyms || []).forEach(a => g.ant.add(a));
-    });
-    groups.set(m.partOfSpeech, g);
-  }
-  const meaningsHtml = [...groups].map(([pos, g]) => `
+  const meaningsHtml = [...groupMeanings(entries)].map(([pos, g]) => `
     <section class="meaning">
       <h3>${esc(pos)}</h3>
       <ol>${g.defs.map(d => `<li>${esc(d.definition)}${d.example ? `<p class="example">"${esc(d.example)}"</p>` : ''}</li>`).join('')}</ol>
@@ -422,7 +442,7 @@ let selectedList = store.get('selectedList', 'misspelled');
 if (!LIST_KEYS.includes(selectedList)) selectedList = 'easy';
 let selectedCount = store.get('count', 10);
 
-const session = { words: [], index: 0, results: [], checked: false, label: '' };
+const session = { words: [], index: 0, results: [], checked: false, label: '', started: 0 };
 const current = () => session.words[session.index];
 const parseCustom = text => [...new Set(text.split(/[\n,;]+/).map(w => w.trim()).filter(Boolean))];
 
@@ -532,13 +552,40 @@ $('#import-file').addEventListener('change', e => {
 
 /* ---------- Dictation session ---------- */
 
+const finePointer = matchMedia('(pointer: fine)').matches;
+const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four'];
+const answerInput = $('#answer');
+let advanceTimer = 0;
+
+const tile = (letter, cls = '') => `<b${cls ? ` class="${cls}"` : ''}>${letter === ' ' ? '&nbsp;' : esc(letter)}</b>`;
+
+// iOS keeps the layout viewport when the keyboard opens, so size the screen to what is visible.
+function fitPlay() {
+  const vv = window.visualViewport;
+  $$('.play').forEach(el => {
+    el.style.height = vv ? `${vv.height}px` : '';
+    el.style.top = vv ? `${vv.offsetTop}px` : '';
+  });
+}
+if (window.visualViewport) {
+  visualViewport.addEventListener('resize', fitPlay);
+  visualViewport.addEventListener('scroll', fitPlay);
+}
+
+function openPlay(id) {
+  $('#session').hidden = id !== 'session';
+  $('#summary').hidden = id !== 'summary';
+  document.body.classList.toggle('in-play', Boolean(id));
+  closePopovers();
+  fitPlay();
+}
+
+const setState = state => { $('#session').dataset.state = state; };
+
 function startSession(words, label) {
-  Object.assign(session, { words, index: 0, results: [], label });
+  Object.assign(session, { words, index: 0, results: [], label, started: Date.now() });
   $('#session-list').textContent = label;
-  $('#setup').hidden = true;
-  $('#summary').hidden = true;
-  $('#session').hidden = false;
-  window.scrollTo({ top: 0 });
+  openPlay('session');
   showWord();
 }
 
@@ -555,20 +602,54 @@ $('#setup').addEventListener('submit', e => {
   startSession(words, listLabel(selectedList));
 });
 
-function showWord() {
-  session.checked = false;
-  $('#progress-text').textContent = `Word ${session.index + 1} of ${session.words.length}`;
-  $('#progress-bar').style.width = `${(session.index / session.words.length) * 100}%`;
-  $('#answer').value = '';
-  $('#answer').disabled = false;
-  $('#answer').focus();
-  $('#feedback').innerHTML = '';
-  $('#word-details').innerHTML = '';
-  $('#check').textContent = 'Check';
-  $('#skip').disabled = false;
-  setTimeout(() => speak(current()), 300);
-  lookup(current()).catch(() => {});
+function renderSegs() {
+  const segs = $('#segs');
+  segs.style.setProperty('--n', session.words.length);
+  segs.classList.toggle('dense', session.words.length > 24);
+  segs.innerHTML = session.words.map((_, i) => {
+    const r = session.results[i];
+    const cls = r ? (r.correct ? 'ok' : 'bad') : i === session.index ? 'now' : '';
+    return `<i class="${cls}"></i>`;
+  }).join('');
 }
+
+function renderTyped() {
+  const letters = [...answerInput.value];
+  const caret = document.activeElement === answerInput ? '<b class="caret"></b>' : '';
+  $('#typed').classList.toggle('long', letters.length > 11);
+  $('#typed').innerHTML = letters.map(l => tile(l)).join('') + caret;
+  $('.speller').classList.toggle('empty', !letters.length);
+}
+
+function updateAskMode() {
+  if (session.checked) return;
+  const focused = document.activeElement === answerInput;
+  setState(answerInput.value || (focused && !finePointer) ? 'typing' : 'listen');
+}
+
+function showWord() {
+  clearTimeout(advanceTimer);
+  session.checked = false;
+  const word = current();
+  $('#progress-text').textContent = `Word ${session.index + 1} of ${session.words.length}`;
+  renderSegs();
+  answerInput.value = '';
+  answerInput.disabled = false;
+  setState('listen');
+  if (finePointer) answerInput.focus();
+  renderTyped();
+  updateAskMode();
+  setTimeout(() => { if (current() === word && !session.checked) speak(word); }, 300);
+  lookup(word).catch(() => {});
+}
+
+['input', 'focus', 'blur'].forEach(type => answerInput.addEventListener(type, () => {
+  renderTyped();
+  updateAskMode();
+}));
+
+// Keep the keyboard open when tapping the player or hint buttons while typing.
+$('.ask').addEventListener('mousedown', e => { if (e.target.closest('button')) e.preventDefault(); });
 
 async function examplesFor(word) {
   const entries = await lookup(word);
@@ -602,11 +683,14 @@ async function speakMeaning() {
 }
 
 $('#play').addEventListener('click', () => speak(current()));
+$('#play-mini').addEventListener('click', () => speak(current()));
 $('#play-slow').addEventListener('click', () => speak(current(), 0.55));
+$('#play-slow-mini').addEventListener('click', () => speak(current(), 0.55));
 $('#play-sentence').addEventListener('click', speakSentence);
 $('#play-meaning').addEventListener('click', speakMeaning);
 
-function diffHtml(typed, correct) {
+// Letter-by-letter alignment of what was typed against the right spelling.
+function alignLetters(typed, correct) {
   const a = typed.toLowerCase();
   const b = correct.toLowerCase();
   const d = Array.from({ length: a.length + 1 }, (_, i) =>
@@ -616,31 +700,153 @@ function diffHtml(typed, correct) {
       d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
     }
   }
-  const out = [];
+  const ops = [];
   let i = a.length;
   let j = b.length;
   while (i > 0 || j > 0) {
-    const same = i > 0 && j > 0 && a[i - 1] === b[j - 1];
-    if (i > 0 && j > 0 && d[i][j] === d[i - 1][j - 1] + (same ? 0 : 1)) {
-      if (same) out.push(`<span>${esc(correct[j - 1])}</span>`);
-      else out.push(`<ins>${esc(correct[j - 1])}</ins>`, `<del>${esc(typed[i - 1])}</del>`);
-      i--; j--;
-    } else if (i > 0 && d[i][j] === d[i - 1][j] + 1) {
-      out.push(`<del>${esc(typed[i - 1])}</del>`);
+    if (i > 0 && d[i][j] === d[i - 1][j] + 1) {
+      ops.push({ t: 'extra', a: typed[i - 1] });
       i--;
+    } else if (j > 0 && d[i][j] === d[i][j - 1] + 1) {
+      ops.push({ t: 'miss', b: correct[j - 1] });
+      j--;
     } else {
-      out.push(`<ins>${esc(correct[j - 1])}</ins>`);
+      ops.push({ t: a[i - 1] === b[j - 1] ? 'same' : 'swap', a: typed[i - 1], b: correct[j - 1] });
+      i--;
       j--;
     }
   }
-  return out.reverse().join('');
+  return ops.reverse();
 }
+
+function letterReminder(errs, word) {
+  const w = word.toLowerCase();
+  const longest = l => {
+    let best = 0;
+    let n = 0;
+    for (const c of w) {
+      n = c === l ? n + 1 : 0;
+      best = Math.max(best, n);
+    }
+    return best;
+  };
+  const count = l => [...w].filter(c => c === l).length;
+  const involved = new Set(errs.flatMap(o => [o.a, o.b]).filter(Boolean)
+    .map(c => c.toLowerCase()).filter(c => /[a-z]/.test(c) && w.includes(c)));
+  const doubled = new Set([...w].filter(c => /[a-z]/.test(c) && longest(c) > 1));
+  if (!involved.size || !doubled.size) return '';
+  const letters = [...new Set(w)].filter(c => doubled.has(c) || (involved.has(c) && count(c) === 1));
+  if (!letters.some(c => involved.has(c))) return '';
+  return ` Remember: ${letters.map(c => `${NUMBER_WORDS[longest(c)] || longest(c)} <b>${esc(c)}</b>`).join(', ')}.`;
+}
+
+function spellingTip(ops, word) {
+  const errs = ops.filter(o => o.t !== 'same');
+  if (!errs.length) return '';
+  const k = ops.indexOf(errs[0]);
+  const x = ops[k];
+  const y = ops[k + 1];
+  let tip;
+  if (errs.length === 2 && y === errs[1] && x.t === 'swap' && y.t === 'swap'
+      && x.a.toLowerCase() === y.b.toLowerCase() && x.b.toLowerCase() === y.a.toLowerCase()) {
+    tip = `You swapped <b>${esc(x.b)}</b> and <b>${esc(y.b)}</b>.`;
+  } else if (errs.length === 1) {
+    tip = x.t === 'extra' ? `You added an extra <b>${esc(x.a)}</b>.`
+      : x.t === 'miss' ? `You missed one <b>${esc(x.b)}</b>.`
+      : `You wrote <b>${esc(x.a)}</b> instead of <b>${esc(x.b)}</b>.`;
+  } else {
+    tip = `${errs.length} letters were different. The green tiles show the right spelling.`;
+  }
+  return tip + letterReminder(errs, word);
+}
+
+const markTyped = (typed, word) => alignLetters(typed, word)
+  .filter(o => o.t !== 'miss')
+  .map(o => (o.t === 'same' ? esc(o.a) : `<s>${esc(o.a)}</s>`)).join('');
 
 function updateMistakes(word, correct) {
   const mistakes = new Set(store.get('mistakes', []));
   if (correct) mistakes.delete(word);
   else mistakes.add(word);
   store.set('mistakes', [...mistakes]);
+}
+
+function entryFacts(entries) {
+  const all = entries || [];
+  const phonetic = all.flatMap(e => [e.phonetic, ...(e.phonetics || []).map(p => p.text)]).find(Boolean) || '';
+  const defs = all.flatMap(e => e.meanings || []).flatMap(m => m.definitions || []);
+  const example = defs[0]?.example || defs.find(d => d.example)?.example || '';
+  return { phonetic, def: defs[0]?.definition || '', example };
+}
+
+const inARow = () => {
+  let n = 0;
+  for (let i = session.results.length - 1; i >= 0 && session.results[i].correct; i--) n++;
+  return n;
+};
+
+function startAdvance() {
+  const btn = $('#ok-next');
+  btn.classList.remove('run');
+  void btn.offsetWidth;
+  btn.classList.add('run');
+  $('#ok-cap').textContent = 'Moves on by itself in 2 seconds';
+  clearTimeout(advanceTimer);
+  advanceTimer = setTimeout(next, 2000);
+}
+
+function stopAdvance() {
+  clearTimeout(advanceTimer);
+  $('#ok-next').classList.remove('run');
+  $('#ok-cap').textContent = 'Tap Next word when you are ready';
+}
+
+function showCorrect(word) {
+  setState('ok');
+  $('#ok-word').textContent = word;
+  $('#ok-phon').innerHTML = `<button class="chip" type="button" data-speak="${esc(word)}">Play</button>`;
+  $('#ok-def').textContent = '';
+  const run = inARow();
+  $('#in-a-row').hidden = run < 2;
+  $('#in-a-row span').textContent = `${run} in a row`;
+  $('.res-ok .res-body').scrollTop = 0;
+  startAdvance();
+  if (finePointer) $('#ok-next').focus();
+}
+
+function showWrong(word, typed) {
+  setState('bad');
+  $('#bad-title').textContent = typed ? 'Not quite' : 'Skipped';
+  $('#bad-word').textContent = word;
+  $('#bad-typed-wrap').hidden = !typed;
+  const ops = typed ? alignLetters(typed, word) : [];
+  const typedRow = ops.map(o => (o.t === 'same' ? tile(o.a, 'dim') : o.t === 'miss' ? tile('', 'gap') : tile(o.a, 'wrong')));
+  const correctRow = typed
+    ? ops.filter(o => o.t !== 'extra').map(o => tile(o.b, o.t === 'same' ? 'good' : 'good add'))
+    : [...word].map(l => tile(l, 'good'));
+  $('#bad-typed').innerHTML = typedRow.join('');
+  $('#bad-typed').classList.toggle('long', typedRow.length > 11);
+  $('#bad-correct').innerHTML = correctRow.join('');
+  $('#bad-correct').classList.toggle('long', correctRow.length > 11);
+  const tip = typed ? spellingTip(ops, word) : '';
+  $('#bad-tip').hidden = !tip;
+  $('#bad-tip span').innerHTML = tip;
+  $('#bad-meaning').hidden = true;
+  $('.res-bad .res-body').scrollTop = 0;
+  if (finePointer) $('#bad-next').focus();
+}
+
+function fillResult(word, entries, correct) {
+  const { phonetic, def, example } = entryFacts(entries);
+  if (correct) {
+    if (phonetic) $('#ok-phon').insertAdjacentHTML('afterbegin', `<span>${esc(phonetic)}</span>`);
+    $('#ok-def').textContent = def;
+  } else {
+    $('#bad-meaning').hidden = !def;
+    $('#bad-def').textContent = def;
+    $('#bad-ex').textContent = example ? `"${example}"` : '';
+    $('#bad-ex').hidden = !example;
+  }
 }
 
 async function record(word, typed) {
@@ -650,29 +856,25 @@ async function record(word, typed) {
   session.checked = true;
   updateMistakes(word, correct);
 
-  $('#answer').disabled = true;
-  $('#skip').disabled = true;
-  $('#feedback').innerHTML = correct
-    ? `<div class="feedback good"><strong>Correct</strong><span>${esc(word)}</span></div>`
-    : `<div class="feedback bad"><strong>${typed ? 'Not quite' : 'Skipped'}</strong><span>The correct spelling is <b>${esc(word)}</b></span></div>
-       ${typed ? `<div class="diff-box">
-         <p class="eyebrow">Your spelling, corrected</p>
-         <div class="diff">${diffHtml(typed, word)}</div>
-         <p class="muted small">Red tiles are wrong or extra letters. Green tiles are letters you missed.</p>
-       </div>` : ''}`;
-  $('#check').textContent = index + 1 < session.words.length ? 'Next word' : 'See results';
-  $('#check').focus();
+  answerInput.disabled = true;
+  answerInput.blur();
+  renderSegs();
+  const last = index + 1 >= session.words.length;
+  $$('.next-btn').forEach(b => (b.textContent = last ? 'See results' : 'Next word'));
+  if (correct) showCorrect(word);
+  else showWrong(word, typed);
 
-  $('#word-details').innerHTML = '<p class="muted loading">Loading word details...</p>';
   try {
-    const html = wordCard(word, await lookup(word));
-    if (session.index === index && session.checked) $('#word-details').innerHTML = html;
-  } catch (err) {
-    if (session.index === index) $('#word-details').innerHTML = errorCard(err);
+    const entries = await lookup(word);
+    if (session.index === index && session.checked) fillResult(word, entries, correct);
+  } catch {
+    // The result screen still works without dictionary details.
   }
 }
 
 function next() {
+  clearTimeout(advanceTimer);
+  if (!session.checked) return;
   session.index++;
   if (session.index < session.words.length) showWord();
   else finish();
@@ -680,13 +882,21 @@ function next() {
 
 $('#answer-form').addEventListener('submit', e => {
   e.preventDefault();
-  if (session.checked) return next();
-  const typed = $('#answer').value.trim();
-  if (!typed) return $('#answer').focus();
+  if (session.checked) return;
+  const typed = answerInput.value.trim();
+  if (!typed) return answerInput.focus();
   record(current(), typed);
 });
 
 $('#skip').addEventListener('click', () => { if (!session.checked) record(current(), ''); });
+$('#ok-next').addEventListener('click', next);
+$('#bad-next').addEventListener('click', next);
+$('#bad-hear').addEventListener('click', () => speak(current()));
+$('#bad-entry').addEventListener('click', () => openSheet(current()));
+$('#ok-card').addEventListener('click', e => {
+  if (e.target.closest('[data-speak]')) stopAdvance();
+  else openSheet(current());
+});
 
 $('#quit').addEventListener('click', () => {
   if (session.results.length) finish();
@@ -694,45 +904,166 @@ $('#quit').addEventListener('click', () => {
 });
 
 function showSetup() {
+  clearTimeout(advanceTimer);
   if (canSpeak) speechSynthesis.cancel();
+  closeSheet();
   renderHome();
-  $('#session').hidden = true;
-  $('#summary').hidden = true;
-  $('#setup').hidden = false;
-  window.scrollTo({ top: 0 });
+  openPlay(null);
+  showTab('dictation');
+}
+
+function summaryRow(cls, word, note) {
+  return `<button class="wl-row ${cls}" type="button" data-sheet-word="${esc(word)}">
+    <i>${cls === 'k' ? '&#10003;' : '&times;'}</i>${esc(word)}<em>${note}</em>
+  </button>`;
 }
 
 function finish() {
+  clearTimeout(advanceTimer);
   if (canSpeak) speechSynthesis.cancel();
+  closeSheet();
   const { results } = session;
   const score = results.filter(r => r.correct).length;
+  const missed = results.length - score;
+  const today = dayKey(new Date());
+  const hadToday = streakInfo().totals.has(today);
   const history = store.get('history', []);
   history.unshift({ date: new Date().toISOString(), list: session.label, score, total: results.length });
   store.set('history', history.slice(0, 500));
 
+  const { current: streak, totals } = streakInfo();
+  const goal = store.get('dailyGoal', 10);
+  const done = totals.get(today) || 0;
   const pct = Math.round((score / results.length) * 100);
+  const secs = Math.round((Date.now() - session.started) / 1000);
+
+  $('#summary-list-name').textContent = session.label;
   $('#summary-ring').style.setProperty('--pct', pct);
   $('#summary-pct').textContent = `${pct}%`;
+  $('#summary-message').textContent = `${pct === 100 ? 'Perfect' : pct >= 70 ? 'Great work' : 'Keep going'}, ${ACCESS_USER}`;
+  $('#summary-sub').textContent = `${score} of ${results.length} spelled right`;
   $('#summary-correct').textContent = score;
-  $('#summary-missed').textContent = results.length - score;
-  $('#summary-total').textContent = results.length;
-  $('#summary-message').textContent = pct === 100 ? 'Perfect spelling.' : pct >= 70 ? 'Great work.' : 'Keep practising.';
-  $('#summary-list').innerHTML = results.map(r => `<li class="${r.correct ? 'ok' : 'bad'}">
-      <button class="link" data-lookup="${esc(r.word)}">${esc(r.word)}</button>
-      ${r.correct ? '<span class="muted">correct</span>' : `<span class="muted">you wrote: ${r.typed ? esc(r.typed) : '(skipped)'}</span>`}
-    </li>`).join('');
-  $('#retry-mistakes').hidden = score === results.length;
+  $('#summary-missed').textContent = missed;
+  $('#summary-time').textContent = `${Math.floor(secs / 60)}:${pad(secs % 60)}`;
+  $('#summary-streak').textContent = `${streak}-day streak`;
+  $('#summary-streak-sub').textContent = hadToday ? 'Today already counted' : '+1 today';
+  $('#summary-goal').textContent = done >= goal ? 'Goal reached' : 'Daily goal';
+  $('#summary-goal-sub').textContent = `${done} of ${goal} today`;
+  $('#summary-goal-icon').classList.toggle('reached', done >= goal);
 
-  $('#session').hidden = true;
-  $('#summary').hidden = false;
-  window.scrollTo({ top: 0 });
+  const wrong = results.filter(r => !r.correct);
+  const right = results.filter(r => r.correct);
+  const room = Math.max(1, 4 - wrong.length);
+  const shown = right.length <= room + 1 ? right : right.slice(0, room);
+  const rest = right.length - shown.length;
+  $('#summary-list').innerHTML = wrong.map(r => summaryRow('x', r.word, r.typed ? `you wrote ${markTyped(r.typed, r.word)}` : 'skipped')).join('')
+    + shown.map(r => summaryRow('k', r.word, 'correct')).join('')
+    + (rest ? `<div class="wl-row k"><i>&#10003;</i>${plural(rest, 'more word')}<em>all correct</em></div>` : '');
+
+  $('#retry-mistakes').hidden = !missed;
+  $('#retry-mistakes').textContent = `Practise the ${plural(missed, 'mistake')}`;
+  openPlay('summary');
+  $('#summary .res-body').scrollTop = 0;
   renderHome();
 }
 
 $('#retry-mistakes').addEventListener('click', () => {
-  startSession(session.results.filter(r => !r.correct).map(r => r.word), 'Retry');
+  startSession(session.results.filter(r => !r.correct).map(r => r.word), 'Practising mistakes');
 });
 $('#new-session').addEventListener('click', showSetup);
+$('#summary-close').addEventListener('click', showSetup);
+
+/* ---------- Full entry sheet ---------- */
+
+const CLOSE_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+let sheetWord = '';
+
+const sheetTop = (word, sub) => `<div class="sheet-top">
+    <div><p class="word-big" id="sheet-word">${esc(word)}</p>${sub ? `<p class="phon">${sub}</p>` : ''}</div>
+    <button class="icon-btn" type="button" data-close-sheet aria-label="Close">${CLOSE_ICON}</button>
+  </div>`;
+
+const wordChips = list => list.slice(0, 20)
+  .map(w => `<button class="chip link" type="button" data-sheet-word="${esc(w)}">${esc(w)}</button>`).join('');
+
+function sheetHtml(word, entries) {
+  if (!entries) return `${sheetTop(word, '')}<p class="muted">No dictionary entry found for this word.</p>`;
+  const headword = entries[0].word;
+  const phonetics = entries.flatMap(e => e.phonetics || []);
+  const text = entries.map(e => e.phonetic).concat(phonetics.map(p => p.text)).find(Boolean);
+  const audio = new Map();
+  phonetics.filter(p => p.audio).forEach(p => {
+    const accent = accentOf(p.audio);
+    if (!audio.has(accent)) audio.set(accent, p.audio);
+  });
+  const syl = syllables(headword);
+  const groups = groupMeanings(entries);
+  const defs = [...groups.values()].flatMap(g => g.defs);
+  const examples = [...new Set(defs.map(d => d.example).filter(Boolean))];
+  const syn = [...new Set([...groups.values()].flatMap(g => [...g.syn]))];
+  const ant = [...new Set([...groups.values()].flatMap(g => [...g.ant]))];
+
+  const meaning = [...groups].map(([pos, g]) => `<p class="pos">${esc(pos)}</p>
+    <ol class="defs">${g.defs.map(d => `<li>${esc(d.definition)}${d.example ? `<p class="example">"${esc(d.example)}"</p>` : ''}</li>`).join('')}</ol>`).join('');
+
+  return `${sheetTop(headword, `${text ? `${esc(text)} &middot; ` : ''}${plural(syl, 'syllable')}`)}
+    <div class="sheet-actions">
+      <button class="btn small" type="button" data-speak="${esc(headword)}">Speak</button>
+      ${[...audio].map(([accent, url]) => `<button class="btn ghost small" type="button" data-audio="${esc(url)}">${esc(accent)}</button>`).join('')}
+      <button class="btn ghost small" type="button" data-spell="${esc(headword)}">Spell out</button>
+    </div>
+    <div class="seg3" role="tablist">
+      <button class="on" type="button" role="tab" aria-selected="true" data-sheet-tab="meaning">Meaning</button>
+      <button type="button" role="tab" aria-selected="false" data-sheet-tab="examples">Examples</button>
+      <button type="button" role="tab" aria-selected="false" data-sheet-tab="similar">Similar</button>
+    </div>
+    <div class="sheet-scroll">
+      <div class="sheet-pane" data-sheet-pane="meaning">
+        ${meaning}
+        ${syn.length ? `<div class="related sheet-similar"><span>Similar</span>${wordChips(syn.slice(0, 3))}</div>` : ''}
+      </div>
+      <div class="sheet-pane" data-sheet-pane="examples" hidden>
+        ${examples.length ? `<ul class="ex-list">${examples.map(x => `<li class="example">"${esc(x)}"</li>`).join('')}</ul>` : '<p class="muted">No example sentences for this word yet.</p>'}
+      </div>
+      <div class="sheet-pane" data-sheet-pane="similar" hidden>
+        ${syn.length ? `<p class="pos">Synonyms</p><div class="related">${wordChips(syn)}</div>` : ''}
+        ${ant.length ? `<p class="pos">Opposites</p><div class="related">${wordChips(ant)}</div>` : ''}
+        ${syn.length || ant.length ? '' : '<p class="muted">No similar words are listed for this word.</p>'}
+      </div>
+    </div>`;
+}
+
+async function openSheet(word) {
+  if ($('#session').dataset.state === 'ok') stopAdvance();
+  sheetWord = word;
+  $('#sheet-wrap').hidden = false;
+  $('#sheet-body').innerHTML = `${sheetTop(word, '')}<p class="muted">Looking up...</p>`;
+  try {
+    const entries = await lookup(word);
+    if (sheetWord === word) $('#sheet-body').innerHTML = sheetHtml(word, entries);
+  } catch (err) {
+    if (sheetWord === word) $('#sheet-body').innerHTML = `${sheetTop(word, '')}<p class="error">Couldn't load the dictionary entry. ${esc(err.message)}</p>`;
+  }
+}
+
+function closeSheet() {
+  sheetWord = '';
+  $('#sheet-wrap').hidden = true;
+}
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-close-sheet],[data-sheet-tab],[data-sheet-word]');
+  if (!t) return;
+  if (t.dataset.sheetWord) openSheet(t.dataset.sheetWord);
+  else if (t.dataset.sheetTab) {
+    $$('[data-sheet-tab]').forEach(b => {
+      const on = b === t;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-selected', String(on));
+    });
+    $$('[data-sheet-pane]').forEach(p => (p.hidden = p.dataset.sheetPane !== t.dataset.sheetTab));
+  } else closeSheet();
+});
 
 /* ---------- Progress tab ---------- */
 
