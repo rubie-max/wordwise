@@ -809,8 +809,9 @@ function stopAdvance() {
 function showCorrect(word) {
   setState('ok');
   $('#ok-word').textContent = word;
-  $('#ok-phon').innerHTML = `<button class="chip" type="button" data-speak="${esc(word)}">Play</button>`;
-  $('#ok-def').textContent = '';
+  $('#ok-phon').innerHTML = `<button class="chip" type="button" data-speak="${esc(word)}">Play</button>
+    <button class="chip" type="button">Meaning</button>`;
+  $('#ok-def').textContent = 'Loading meaning\u2026';
   const run = inARow();
   $('#in-a-row').hidden = run < 2;
   $('#in-a-row span').textContent = `${run} in a row`;
@@ -845,7 +846,7 @@ function fillResult(word, entries, correct) {
   const { phonetic, def, example } = entryFacts(entries);
   if (correct) {
     if (phonetic) $('#ok-phon').insertAdjacentHTML('afterbegin', `<span>${esc(phonetic)}</span>`);
-    $('#ok-def').textContent = def;
+    $('#ok-def').textContent = def || 'Tap Meaning for the full dictionary entry.';
   } else {
     $('#bad-meaning').hidden = !def;
     $('#bad-def').textContent = def;
@@ -873,7 +874,9 @@ async function record(word, typed) {
     const entries = await lookup(word);
     if (session.index === index && session.checked) fillResult(word, entries, correct);
   } catch {
-    // The result screen still works without dictionary details.
+    if (session.index === index && session.checked && correct) {
+      $('#ok-def').textContent = "Couldn't load the meaning. Tap Meaning to try again.";
+    }
   }
 }
 
