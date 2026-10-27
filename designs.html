@@ -437,7 +437,7 @@
   </section>
   <script>
     var only = new URLSearchParams(location.search).get('only');
-    if (only) document.querySelectorAll('section.theme, .page-head').forEach(function (el) { el.hidden = el.id !== only; });
+    if (only) document.querySelectorAll('section.theme, .page-head').forEach(function (el) { if (el.id !== only) el.style.display = 'none'; });
   </script>
 </body>
 </html>
