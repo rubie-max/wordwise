@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WordWise - design directions</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;700&family=Sora:wght@300;400;600;700&family=Shippori+Mincho:wght@500;700;800&family=VT323&family=Baloo+2:wght@500;700;800&family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Inter:wght@400;500;600&display=swap">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Inter, system-ui, sans-serif; background: #e7e6e2; color: #1a1a1a; }
+  .page-head { max-width: 1000px; margin: 0 auto; padding: 40px 24px 8px; }
+  .page-head h1 { font-size: 28px; letter-spacing: -.02em; }
+  .page-head p { color: #5d5d5d; margin-top: 6px; }
+  section.theme { max-width: 1000px; margin: 0 auto; padding: 36px 24px; display: grid; grid-template-columns: 300px 300px 1fr; gap: 28px; align-items: start; }
+  .info h2 { font-size: 22px; letter-spacing: -.01em; }
+  .info .num { font-size: 12px; font-weight: 600; color: #8a8a8a; letter-spacing: .12em; text-transform: uppercase; }
+  .info p { color: #4b4b4b; font-size: 14px; line-height: 1.55; margin-top: 8px; }
+  .info .fonts { font-size: 12px; color: #777; margin-top: 10px; }
+  .swatches { display: flex; gap: 6px; margin-top: 14px; }
+  .swatches i { width: 30px; height: 30px; border-radius: 8px; border: 1px solid rgb(0 0 0 / .12); }
+
+  .phone { width: 300px; height: 620px; border-radius: 46px; border: 10px solid #121212; overflow: hidden; position: relative; box-shadow: 0 24px 50px rgb(0 0 0 / .22); display: flex; flex-direction: column; }
+  .status { display: flex; justify-content: space-between; align-items: center; padding: 10px 22px 6px; font-size: 12px; font-weight: 600; position: relative; z-index: 3; }
+  .status .notch { width: 74px; height: 20px; border-radius: 99px; background: #121212; }
+  .scr { flex: 1; display: flex; flex-direction: column; padding: 8px 18px 16px; gap: 12px; position: relative; z-index: 2; min-height: 0; }
+  .grow { flex: 1; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .between { justify-content: space-between; }
+  .center { text-align: center; align-items: center; }
+
+  /* 1. Pop Brutal */
+  .brutal { background: #fff4d6; color: #111; font-family: "Space Grotesk", sans-serif; }
+  .brutal .logo { font-family: "Archivo Black"; font-size: 22px; letter-spacing: -.02em; }
+  .brutal .box { border: 3px solid #111; border-radius: 14px; box-shadow: 5px 5px 0 #111; }
+  .brutal .hero { background: #ff6b9a; padding: 16px; }
+  .brutal .hero small { font-weight: 700; letter-spacing: .08em; font-size: 11px; }
+  .brutal .hero h3 { font-family: "Archivo Black"; font-size: 24px; line-height: 1.05; margin: 6px 0 12px; }
+  .brutal .btn { background: #111; color: #fff4d6; font-weight: 700; padding: 13px; text-align: center; border-radius: 10px; font-size: 15px; }
+  .brutal .btn.y { background: #ffd84d; color: #111; border: 3px solid #111; box-shadow: 4px 4px 0 #111; }
+  .brutal .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .brutal .tile { padding: 12px; font-weight: 700; font-size: 14px; }
+  .brutal .tile span { display: block; font-size: 11px; font-weight: 500; margin-top: 2px; }
+  .brutal .sticker { position: absolute; right: 14px; top: 46px; background: #ffd84d; transform: rotate(8deg); padding: 6px 10px; font-family: "Archivo Black"; font-size: 13px; z-index: 4; }
+  .brutal .nav { display: flex; justify-content: space-around; border-top: 3px solid #111; padding: 10px 0 14px; font-weight: 700; font-size: 12px; background: #fff; position: relative; z-index: 2; }
+  .brutal .nav .on { background: #111; color: #fff4d6; padding: 2px 10px; border-radius: 6px; }
+  .brutal .play { width: 130px; height: 130px; background: #ffd84d; display: grid; place-items: center; margin: 8px auto 0; border-radius: 24px; }
+  .brutal .letters { display: flex; gap: 4px; justify-content: center; }
+  .brutal .letters b { width: 26px; height: 34px; display: grid; place-items: center; border: 2.5px solid #111; border-radius: 7px; background: #fff; font-size: 16px; }
+  .brutal .letters b.x { background: #ff6b9a; text-decoration: line-through; }
+  .brutal .nope { background: #7cc6fe; padding: 12px 14px; }
+  .brutal .nope h4 { font-family: "Archivo Black"; font-size: 20px; }
+
+  /* 2. Aurora Glass */
+  .aurora { background: #070b1d; color: #eef1ff; font-family: Sora, sans-serif; }
+  .aurora::before, .aurora::after { content: ""; position: absolute; border-radius: 50%; filter: blur(50px); z-index: 1; }
+  .aurora::before { width: 260px; height: 260px; background: #6d4dff; top: -60px; left: -80px; opacity: .75; }
+  .aurora::after { width: 240px; height: 240px; background: #00d1c1; bottom: 40px; right: -110px; opacity: .55; }
+  .aurora .glass { background: rgb(255 255 255 / .08); border: 1px solid rgb(255 255 255 / .16); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border-radius: 24px; }
+  .aurora .hi { font-weight: 300; font-size: 13px; opacity: .7; }
+  .aurora h3 { font-size: 22px; font-weight: 600; letter-spacing: -.02em; }
+  .aurora .ringwrap { display: flex; gap: 16px; align-items: center; padding: 16px; }
+  .aurora .ring { width: 92px; height: 92px; border-radius: 50%; background: conic-gradient(#00e0c6 0 60%, rgb(255 255 255 / .1) 0); display: grid; place-items: center; }
+  .aurora .ring div { width: 74px; height: 74px; border-radius: 50%; background: #101633; display: grid; place-items: center; font-size: 18px; font-weight: 700; }
+  .aurora .cta { background: linear-gradient(90deg, #7b5cff, #00d1c1); color: #fff; text-align: center; padding: 15px; border-radius: 99px; font-weight: 600; box-shadow: 0 10px 30px rgb(0 209 193 / .35); }
+  .aurora .chips { display: flex; gap: 8px; overflow: hidden; }
+  .aurora .chip { padding: 9px 14px; border-radius: 99px; font-size: 12px; white-space: nowrap; }
+  .aurora .tabbar { position: relative; z-index: 2; margin: 0 16px 16px; display: flex; justify-content: space-around; padding: 12px; font-size: 11px; }
+  .aurora .tabbar .on { color: #00e0c6; font-weight: 600; }
+  .aurora .orb { width: 150px; height: 150px; border-radius: 50%; margin: 18px auto 0; background: radial-gradient(circle at 35% 30%, #a996ff, #5b3df5 55%, #2a1a8a); box-shadow: 0 0 0 14px rgb(123 92 255 / .15), 0 0 60px rgb(123 92 255 / .6); display: grid; place-items: center; }
+  .aurora .wave { display: flex; gap: 4px; justify-content: center; align-items: center; height: 40px; }
+  .aurora .wave i { width: 4px; border-radius: 4px; background: linear-gradient(#00e0c6, #7b5cff); }
+  .aurora .field { padding: 15px 18px; font-size: 18px; letter-spacing: .04em; }
+  .aurora .fb { padding: 12px 16px; font-size: 13px; }
+  .aurora .fb b { color: #ff8fb1; }
+
+  /* 3. Sumi Ink */
+  .ink { background: #f3ede2; color: #1b1a17; font-family: "Shippori Mincho", serif; }
+  .ink .seal { position: absolute; right: 18px; top: 50px; width: 44px; height: 44px; background: #c8372d; color: #f3ede2; display: grid; place-items: center; font-size: 24px; font-weight: 800; border-radius: 6px; transform: rotate(-4deg); z-index: 3; }
+  .ink .date { font-size: 12px; letter-spacing: .3em; color: #7b746a; }
+  .ink h3 { font-size: 30px; font-weight: 800; line-height: 1.1; }
+  .ink .brush { height: 6px; background: #1b1a17; border-radius: 0 6px 6px 0; width: 70%; clip-path: polygon(0 40%, 100% 0, 96% 100%, 0 70%); }
+  .ink .list { display: flex; flex-direction: column; }
+  .ink .item { display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px solid #d6cdbd; align-items: baseline; }
+  .ink .item em { font-style: normal; color: #c8372d; font-weight: 700; width: 22px; }
+  .ink .item span { flex: 1; font-size: 16px; font-weight: 700; }
+  .ink .item small { color: #8a8174; font-family: Inter; font-size: 11px; }
+  .ink .dots { display: flex; gap: 6px; }
+  .ink .dots i { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid #c8372d; }
+  .ink .dots i.f { background: #c8372d; }
+  .ink .btn { background: #1b1a17; color: #f3ede2; text-align: center; padding: 15px; font-size: 16px; letter-spacing: .25em; font-weight: 700; }
+  .ink .enso { width: 170px; height: 170px; margin: 14px auto 0; display: grid; place-items: center; position: relative; }
+  .ink .enso svg { position: absolute; inset: 0; }
+  .ink .under { border-bottom: 1.5px solid #1b1a17; padding: 8px 0; font-size: 26px; text-align: center; letter-spacing: .08em; }
+  .ink .mark { text-align: center; font-size: 26px; letter-spacing: .08em; position: relative; }
+  .ink .mark s { color: #c8372d; text-decoration-thickness: 2px; }
+  .ink .note { color: #c8372d; font-size: 14px; text-align: center; }
+
+  /* 4. Arcade */
+  .arcade { background: #050806; color: #39ff88; font-family: VT323, monospace; font-size: 20px; }
+  .arcade::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgb(0 0 0 / .28) 0 2px, transparent 2px 4px); pointer-events: none; z-index: 5; }
+  .arcade .glow { text-shadow: 0 0 6px #39ff88, 0 0 14px rgb(57 255 136 / .5); }
+  .arcade h3 { font-size: 34px; line-height: 1; }
+  .arcade .dim { color: #1d8a4a; }
+  .arcade .pink { color: #ff3df2; text-shadow: 0 0 8px #ff3df2; }
+  .arcade .yellow { color: #ffe14d; text-shadow: 0 0 8px #ffe14d; }
+  .arcade .frame { border: 2px solid #39ff88; padding: 10px 12px; box-shadow: 0 0 12px rgb(57 255 136 / .35) inset; }
+  .arcade .menu div { padding: 4px 0; }
+  .arcade .blink { animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .arcade .px { display: flex; gap: 4px; justify-content: center; }
+  .arcade .px b { width: 24px; height: 30px; border: 2px solid #39ff88; display: grid; place-items: center; font-weight: 400; }
+  .arcade .px b.x { border-color: #ff3df2; color: #ff3df2; }
+  .arcade .playbtn { border: 3px solid #ffe14d; color: #ffe14d; text-align: center; padding: 18px; font-size: 30px; box-shadow: 0 0 18px rgb(255 225 77 / .4); }
+
+  /* 5. Clay */
+  .clay { background: #ece6ff; color: #2b2350; font-family: "Baloo 2", sans-serif; }
+  .clay .card { background: #f7f4ff; border-radius: 28px; box-shadow: 8px 8px 18px #cbc1ef, -8px -8px 18px #ffffff, inset 2px 2px 4px #ffffff; padding: 16px; }
+  .clay .mascot { width: 66px; height: 60px; background: #ff9f5a; border-radius: 50% 50% 46% 46%; position: relative; box-shadow: inset -6px -8px 0 rgb(0 0 0 / .1), 4px 6px 12px rgb(255 120 40 / .35); flex-shrink: 0; }
+  .clay .mascot::before, .clay .mascot::after { content: ""; position: absolute; top: 22px; width: 8px; height: 11px; background: #2b2350; border-radius: 50%; }
+  .clay .mascot::before { left: 20px; }
+  .clay .mascot::after { right: 20px; }
+  .clay .say { font-size: 18px; font-weight: 800; line-height: 1.15; }
+  .clay .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .clay .stat { text-align: center; padding: 10px 4px; border-radius: 22px; }
+  .clay .stat b { display: block; font-size: 22px; line-height: 1; }
+  .clay .stat span { font-size: 11px; color: #6c6496; }
+  .clay .s1 { background: #ffd9c2; } .clay .s2 { background: #c9f3e4; } .clay .s3 { background: #d9d0ff; }
+  .clay .btn { background: #ff8a3d; color: #fff; text-align: center; font-weight: 800; font-size: 18px; padding: 14px; border-radius: 24px; box-shadow: 0 8px 0 #d9661c, 0 14px 20px rgb(255 120 40 / .35); }
+  .clay .pill { display: inline-block; background: #fff; border-radius: 99px; padding: 6px 14px; font-weight: 700; font-size: 13px; box-shadow: 3px 3px 8px #cbc1ef; }
+  .clay .bigplay { width: 140px; height: 140px; margin: 10px auto 0; border-radius: 50%; background: #4fd6a6; display: grid; place-items: center; box-shadow: 0 10px 0 #2fae80, 0 18px 30px rgb(47 174 128 / .4), inset -10px -10px 0 rgb(0 0 0 / .06); }
+  .clay .bubbles { display: flex; gap: 4px; justify-content: center; }
+  .clay .bubbles b { width: 26px; height: 32px; border-radius: 12px; background: #fff; display: grid; place-items: center; font-size: 17px; box-shadow: 2px 3px 0 #d3c9f5; }
+  .clay .bubbles b.x { background: #ffb3c7; text-decoration: line-through; }
+  .clay .nav { display: flex; justify-content: space-around; margin: 0 14px 14px; padding: 10px; border-radius: 26px; background: #f7f4ff; box-shadow: 6px 6px 14px #cbc1ef, -6px -6px 14px #fff; font-weight: 700; font-size: 12px; position: relative; z-index: 2; }
+  .clay .nav .on { color: #ff8a3d; }
+
+  /* 6. Noir Luxe */
+  .luxe { background: #0d0c0a; color: #efe8da; font-family: Inter, sans-serif; }
+  .luxe .gold { color: #c9a45c; }
+  .luxe .mast { display: flex; justify-content: space-between; font-size: 10px; letter-spacing: .3em; text-transform: uppercase; border-bottom: 1px solid #3a3326; padding-bottom: 10px; }
+  .luxe .serif { font-family: "Playfair Display", serif; }
+  .luxe h3 { font-family: "Playfair Display"; font-style: italic; font-weight: 500; font-size: 20px; color: #c9a45c; }
+  .luxe .word { font-family: "Playfair Display"; font-size: 46px; line-height: 1; letter-spacing: -.02em; }
+  .luxe .pron { font-size: 12px; color: #8c836f; letter-spacing: .08em; }
+  .luxe .rule { height: 1px; background: linear-gradient(90deg, #c9a45c, transparent); }
+  .luxe .meta { display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; border-top: 1px solid #3a3326; border-bottom: 1px solid #3a3326; }
+  .luxe .meta div { padding: 12px 0; }
+  .luxe .meta div + div { border-left: 1px solid #3a3326; }
+  .luxe .meta b { font-family: "Playfair Display"; font-size: 22px; font-weight: 500; display: block; }
+  .luxe .meta span { font-size: 9px; letter-spacing: .25em; text-transform: uppercase; color: #8c836f; }
+  .luxe .btn { border: 1px solid #c9a45c; color: #c9a45c; text-align: center; padding: 15px; letter-spacing: .3em; font-size: 11px; text-transform: uppercase; }
+  .luxe .btn.fill { background: #c9a45c; color: #0d0c0a; }
+  .luxe .circle { width: 160px; height: 160px; border: 1px solid #c9a45c; border-radius: 50%; margin: 18px auto 0; display: grid; place-items: center; box-shadow: 0 0 0 10px #0d0c0a, 0 0 0 11px #3a3326; }
+  .luxe .typed { font-family: "Playfair Display"; font-style: italic; font-size: 30px; text-align: center; border-bottom: 1px solid #c9a45c; padding-bottom: 8px; }
+  .luxe .typed s { color: #b8574a; }
+</style>
+</head>
+<body>
+  <div class="page-head">
+    <h1>WordWise — six different looks</h1>
+    <p>Each one has its own colors, fonts and feel. Left phone is Home, right phone is Practice with feedback.</p>
+  </div>
+
+  <!-- 1 -->
+  <section class="theme" id="brutal">
+    <div class="phone brutal">
+      <div class="status"><span>9:41</span><span class="notch"></span><span>100%</span></div>
+      <div class="sticker box">12 DAY STREAK</div>
+      <div class="scr">
+        <div class="logo">WORDWISE.</div>
+        <div class="box hero">
+          <small>TODAY'S DICTATION</small>
+          <h3>COMMONLY<br>MISSPELLED</h3>
+          <div class="btn">START 10 WORDS &rarr;</div>
+        </div>
+        <div class="tiles">
+          <div class="box tile" style="background:#7cc6fe">Hard<span>25 words</span></div>
+          <div class="box tile" style="background:#9ff0b5">Mistakes<span>8 words</span></div>
+          <div class="box tile" style="background:#fff">My words<span>12 words</span></div>
+          <div class="box tile" style="background:#ffb26b">Import<span>paste list</span></div>
+        </div>
+      </div>
+      <div class="nav"><span class="on">HOME</span><span>PLAY</span><span>WORDS</span><span>STATS</span></div>
+    </div>
+    <div class="phone brutal">
+      <div class="status"><span>9:41</span><span class="notch"></span><span>100%</span></div>
+      <div class="scr">
+        <div class="row between"><b>&times; QUIT</b><b>3 / 10</b></div>
+        <div class="box play">
+          <svg width="56" height="56" viewBox="0 0 24 24" fill="#111"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14" stroke="#111" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>
+        </div>
+        <div class="grow"></div>
+        <div class="letters"><b>n</b><b>e</b><b>c</b><b class="x">c</b><b>e</b><b>s</b><b>s</b><b>a</b><b>r</b><b>y</b></div>
+        <div class="box nope"><h4>NOPE! ONE C.</h4>one collar, two sleeves &mdash; necessary</div>
+        <div class="btn y">NEXT WORD &rarr;</div>
+      </div>
+    </div>
+    <div class="info">
+      <div class="num">01</div>
+      <h2>Pop Brutal</h2>
+      <p>Loud and fun. Thick black outlines, hard shadows, sticker labels and bright blocks of color. Feels like a zine or a modern indie app. Hard to ignore, great for daily habit.</p>
+      <div class="swatches"><i style="background:#fff4d6"></i><i style="background:#ff6b9a"></i><i style="background:#ffd84d"></i><i style="background:#7cc6fe"></i><i style="background:#111"></i></div>
+      <div class="fonts">Archivo Black + Space Grotesk</div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="theme" id="aurora">
+    <div class="phone aurora">
+      <div class="status"><span>9:41</span><span class="notch"></span><span>100%</span></div>
+      <div class="scr">
+        <div><div class="hi">Good morning</div><h3>Kaizen</h3></div>
+        <div class="glass ringwrap">
+          <div class="ring"><div>6/10</div></div>
+          <div><div class="hi">Daily goal</div><div style="font-weight:600;font-size:15px;margin-top:2px">4 words to go</div><div class="hi" style="margin-top:6px">12-day streak</div></div>
+        </div>
+        <div class="glass" style="padding:16px">
+          <div class="hi">Continue</div>
+          <div style="font-size:18px;font-weight:600;margin:4px 0 2px">Commonly misspelled</div>
+          <div class="hi">10 words &middot; 4 min</div>
+        </div>
+        <div class="chips"><span class="glass chip">Hard</span><span class="glass chip">My mistakes</span><span class="glass chip">My words</span></div>
+        <div class="grow"></div>
+        <div class="cta">Start dictation</div>
+      </div>
+      <div class="glass tabbar"><span class="on">Home</span><span>Practice</span><span>Words</span><span>Stats</span></div>
+    </div>
+    <div class="phone aurora">
+      <div class="status"><span>9:41</span><span class="notch"></span><span>100%</span></div>
+      <div class="scr center">
+        <div class="hi">Word 3 of 10</div>
+        <div class="orb"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M11 5 6 9H2v6h4l5 4V5z" fill="#fff"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg></div>
+        <div class="wave"><i style="height:10px"></i><i style="height:22px"></i><i style="height:34px"></i><i style="height:18px"></i><i style="height:30px"></i><i style="height:14px"></i><i style="height:26px"></i><i style="height:12px"></i></div>
+        <div class="grow"></div>
+        <div class="glass field" style="width:100%">nec<b style="color:#ff8fb1">c</b>essary</div>
+        <div class="glass fb" style="width:100%">Almost &mdash; <b>one c</b>, two s. necessary</div>
+        <div class="cta" style="width:100%">Next word</div>
+      </div>
+    </div>
+    <div class="info">
+      <div class="num">02</div>
+      <h2>Aurora Glass</h2>
+      <p>Night mode with glowing color behind frosted glass panels. A glowing orb for the play button and a gradient Start button. Feels like a premium iOS app or a music player.</p>
+      <div class="swatches"><i style="background:#070b1d"></i><i style="background:#6d4dff"></i><i style="background:#00d1c1"></i><i style="background:#ff8fb1"></i><i style="background:#eef1ff"></i></div>
+      <div class="fonts">Sora</div>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="theme" id="ink">
+    <div class="phone ink">
+      <div class="status"><span>9:41</span><span class="notch"></span><span>100%</span></div>
+      <div class="seal">語</div>
+      <div class="scr">
+        <div class="date">TUESDAY &middot; 27 X</div>
+        <h3>Today,<br>ten words.</h3>
+        <div class="brush"></div>
+        <div class="row between" style="margin-top:4px"><span style="font-size:13px">Streak</span><div class="dots"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i></i><i></i></div></div>
+        <div class="list">
+          <div class="item"><em>一</em><span>Commonly misspelled</span><small>25</small></div>
+          <div class="item"><em>二</em><span>My mistakes</span><small>8</small></div>
+          <div class="item"><em>三</em><span>Hard words</span><small>25</small></div>
+          <div class="item"><em>四</em><span>My own words</span><small>12</small></div>
+        </div>
+        <div class="grow"></div>
+        <div class="btn">BEGIN</div>
+      </div>
+    </div>
+    <div class="phone ink">
+      <div class="status"><span>9:41</span><span class="notch"></span><span>100%</span></div>
+      <div class="scr">
+        <div class="date" style="text-align:center">三 / 十</div>
+        <div class="enso">
+          <svg viewBox="0 0 170 170"><path d="M150 70 A66 66 0 1 0 140 120" fill="none" stroke="#1b1a17" stroke-width="11" stroke-linecap="round"/></svg>
+          <span style="font-size:15px;letter-spacing:.3em">LISTEN</span>
+        </div>
+        <div class="grow"></div>
+        <div class="mark">nec<s>c</s>essary</div>
+        <div class="note">one c &middot; two s</div>
+        <div class="under">necessary</div>
+        <div style="font-size:13px;color:#7b746a;text-align:center">needed in order to achieve a result</div>
+        <div class="btn">NEXT</div>
+      </div>
+    </div>
+    <div class="info">
+      <div class="num">03</div>
+      <h2>Sumi Ink</h2>
+      <p>Japanese stationery. Warm paper, black ink, one red seal. An ens&#333; brush circle for the play button, and corrections in red ink like a teacher's marks. Very calm and literary.</p>
+      <div class="swatches"><i style="background:#f3ede2"></i><i style="background:#1b1a17"></i><i style="background:#c8372d"></i><i style="background:#d6cdbd"></i></div>
+      <div class="fonts">Shippori Mincho</div>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section class="theme" id="arcade">
+    <div class="phone arcade">
+      <div class="status glow"><span>9:41</span><span class="notch"></span><span>100%</span></div>
+      <div class="scr">
+        <div class="dim">&gt; boot wordwise.exe</div>
+        <h3 class="glow">WORD<br>WISE_</h3>
+        <div class="frame">
+          <div class="row between"><span>PLAYER</span><span class="yellow">KAIZEN</span></div>
+          <div class="row between"><span>LEVEL</span><span>07</span></div>
+          <div class="row between"><span>STREAK</span><span class="pink">12 DAYS</span></div>
+          <div style="margin-top:6px">XP &#9608;&#9608;&#9608;&#9608;&#9608;&#9608;<span class="dim">&#9608;&#9608;&#9608;&#9608;</span></div>
+        </div>
+        <div class="menu glow">
+          <div>&gt; START DICTATION<span class="blink">_</span></div>
+          <div class="dim">&nbsp; WORD LISTS</div>
+          <div class="dim">&nbsp; IMPORT WORDS</div>
+          <div class="dim">&nbsp; HI-SCORES</div>
+        </div>
+        <div class="grow"></div>
+        <div class="dim" style="text-align:center">INSERT WORD TO CONTINUE</div>
+      </div>
+    </div>
+    <div class="phone arcade">
+      <div class="status glow"><span>9:41</span><span class="notch"></span><span>100%</span></div>
+      <div class="scr">
+        <div class="row between glow"><span>WORD 03/10</span><span class="pink">&hearts;&hearts;&hearts;</span></div>
+        <div class="playbtn" style="margin-top:20px">[ &#9654; PLAY ]</div>
+        <div class="row" style="justify-content:center;gap:16px" class="dim"><span class="dim">[SLOW]</span><span class="dim">[HINT]</span></div>
+        <div class="grow"></div>
+        <div class="px"><b>n</b><b>e</b><b>c</b><b class="x">c</b><b>e</b><b>s</b><b>s</b><b>a</b><b>r</b><b>y</b></div>
+        <div class="pink" style="text-align:center;font-size:26px">MISS! EXTRA 'C'</div>
+        <div class="glow" style="text-align:center">NECESSARY &middot; +0 XP</div>
+        <div class="frame glow" style="text-align:center">&gt; NEXT WORD</div>
+      </div>
+    </div>
+    <div class="info">
+      <div class="num">04</div>
+      <h2>Arcade Terminal</h2>
+      <p>A retro game console. Pixel font, green phosphor glow, scanlines, lives and XP shown as text. Practice feels like playing a level. Very different, very memorable.</p>
+      <div class="swatches"><i style="background:#050806"></i><i style="background:#39ff88"></i><i style="background:#ff3df2"></i><i style="background:#ffe14d"></i></div>
+      <div class="fonts">VT323</div>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section class="theme" id="clay">
+    <div class="phone clay">
+      <div class="status"><span>9:41</span><span class="notch"></span><span>100%</span></div>
+      <div class="scr">
+        <div class="card row" style="gap:14px">
+          <div class="mascot"></div>
+          <div class="say">Ready for 10 words, Kaizen?</div>
+        </div>
+        <div class="stats">
+          <div class="stat s1"><b>12</b><span>day streak</span></div>
+          <div class="stat s2"><b>6/10</b><span>today</span></div>
+          <div class="stat s3"><b>81%</b><span>accuracy</span></div>
+        </div>
+        <div class="card">
+          <div style="font-size:13px;color:#6c6496;font-weight:700">TODAY'S LIST</div>
+          <div style="font-size:20px;font-weight:800">Commonly misspelled</div>
+          <div class="row" style="flex-wrap:wrap;margin-top:8px"><span class="pill">10 words</span><span class="pill">shuffle</span></div>
+        </div>
+        <div class="grow"></div>
+        <div class="btn">Let's go!</div>
+      </div>
+      <div class="nav"><span class="on">Home</span><span>Practice</span><span>Words</span><span>Me</span></div>
+    </div>
+    <div class="phone clay">
+      <div class="status"><span>9:41</span><span class="notch"></span><span>100%</span></div>
+      <div class="scr">
+        <div class="row between" style="font-weight:800"><span>&times;</span><span>3 of 10</span><span class="pill">&#9829; 4</span></div>
+        <div class="bigplay"><svg width="58" height="58" viewBox="0 0 24 24" fill="#fff"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg></div>
+        <div class="row" style="justify-content:center"><span class="pill">Slower</span><span class="pill">Sentence</span></div>
+        <div class="grow"></div>
+        <div class="bubbles"><b>n</b><b>e</b><b>c</b><b class="x">c</b><b>e</b><b>s</b><b>s</b><b>a</b><b>r</b><b>y</b></div>
+        <div class="card row" style="gap:12px;padding:12px">
+          <div class="mascot" style="width:44px;height:40px"></div>
+          <div><b style="font-size:16px">So close!</b><div style="font-size:13px;color:#6c6496">Remove one c &rarr; necessary</div></div>
+        </div>
+        <div class="btn">Next word</div>
+      </div>
+    </div>
+    <div class="info">
+      <div class="num">05</div>
+      <h2>Soft Clay</h2>
+      <p>Friendly and squishy. Soft 3D buttons that look pressable, pastel stat bubbles and a little orange mascot that cheers you on. Feels like a game for all ages, never stressful.</p>
+      <div class="swatches"><i style="background:#ece6ff"></i><i style="background:#ff8a3d"></i><i style="background:#4fd6a6"></i><i style="background:#ffb3c7"></i><i style="background:#2b2350"></i></div>
+      <div class="fonts">Baloo 2</div>
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section class="theme" id="luxe">
+    <div class="phone luxe">
+      <div class="status"><span>9:41</span><span class="notch"></span><span>100%</span></div>
+      <div class="scr">
+        <div class="mast"><span>WordWise</span><span class="gold">No. 301</span></div>
+        <h3>The Daily Dictation</h3>
+        <div>
+          <div class="pron">WORD OF THE DAY</div>
+          <div class="word" style="margin-top:8px">Conscien&shy;tious</div>
+          <div class="pron" style="margin-top:8px">/ˌkɒn.ʃiˈen.ʃəs/ &middot; adjective</div>
+        </div>
+        <div class="rule"></div>
+        <p class="serif" style="font-size:15px;line-height:1.5;color:#cfc6b4">Wishing to do what is right; careful and thorough in one's work.</p>
+        <div class="grow"></div>
+        <div class="meta"><div><b>12</b><span>Streak</span></div><div><b>6/10</b><span>Today</span></div><div><b>81%</b><span>Accuracy</span></div></div>
+        <div class="btn fill">Begin &mdash; 10 words</div>
+      </div>
+    </div>
+    <div class="phone luxe">
+      <div class="status"><span>9:41</span><span class="notch"></span><span>100%</span></div>
+      <div class="scr center">
+        <div class="mast" style="width:100%"><span>Commonly misspelled</span><span class="gold">III / X</span></div>
+        <div class="circle"><svg width="40" height="40" viewBox="0 0 24 24" fill="#c9a45c"><path d="M7 4.5v15l12-7.5z"/></svg></div>
+        <div class="serif" style="font-style:italic;color:#8c836f">Listen carefully</div>
+        <div class="grow"></div>
+        <div class="typed" style="width:100%">nec<s>c</s>essary</div>
+        <div class="pron">ONE C &middot; TWO S</div>
+        <div class="word" style="font-size:34px">necessary</div>
+        <div class="btn" style="width:100%">Next word</div>
+      </div>
+    </div>
+    <div class="info">
+      <div class="num">06</div>
+      <h2>Noir Luxe</h2>
+      <p>A luxury magazine. Black and gold, elegant serif type, a word of the day on the cover and thin gold lines. Feels like a premium subscription, serious and adult.</p>
+      <div class="swatches"><i style="background:#0d0c0a"></i><i style="background:#c9a45c"></i><i style="background:#efe8da"></i><i style="background:#b8574a"></i></div>
+      <div class="fonts">Playfair Display + Inter</div>
+    </div>
+  </section>
+</body>
+</html>
