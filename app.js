@@ -87,12 +87,23 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
 
 if (store.get(AUTH_KEY, '') === ACCESS_USER) unlockApp();
 
-function toast(message) {
+function toast(message, action) {
   const el = $('#toast');
   el.textContent = message;
+  if (action) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'toast-action';
+    b.textContent = action.label;
+    b.addEventListener('click', () => {
+      el.hidden = true;
+      action.run();
+    });
+    el.append(b);
+  }
   el.hidden = false;
   clearTimeout(toast.timer);
-  toast.timer = setTimeout(() => (el.hidden = true), 2800);
+  toast.timer = setTimeout(() => (el.hidden = true), action ? 5000 : 2800);
 }
 
 function shuffle(list) {
@@ -142,6 +153,7 @@ function showTab(name) {
   $$('.panel').forEach(p => (p.hidden = p.id !== name));
   if (name === 'progress') renderProgress();
   if (name === 'settings') renderSettings();
+  if (name === 'words') renderBank();
   window.scrollTo({ top: 0 });
 }
 $$('.tab').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
@@ -598,6 +610,17 @@ const session = { words: [], index: 0, results: [], checked: false, label: '', s
 const current = () => session.words[session.index];
 const parseCustom = text => [...new Set(text.split(/[\n,;]+/).map(w => w.trim()).filter(Boolean))];
 
+// Own words as { word, meaning, example }, oldest first. Older versions kept a plain text list.
+const bankKey = w => String(w).trim().toLowerCase();
+let bank = store.get('wordBank', null);
+if (!Array.isArray(bank)) {
+  bank = parseCustom(store.get('customWords', '')).map(word => ({ word, meaning: '', example: '' }));
+  store.set('wordBank', bank);
+  localStorage.removeItem('customWords');
+}
+const saveBank = () => store.set('wordBank', bank);
+const bankEntry = word => bank.find(b => bankKey(b.word) === bankKey(word));
+
 function listLabel(key) {
   if (key === 'mistakes') return 'My mistakes';
   if (key === 'custom') return 'My own words';
@@ -605,7 +628,7 @@ function listLabel(key) {
 }
 
 function listWords(key) {
-  if (key === 'custom') return parseCustom($('#custom-words').value);
+  if (key === 'custom') return bank.map(b => b.word);
   if (key === 'mistakes') return store.get('mistakes', []);
   return WORD_LISTS[key].words.slice();
 }
@@ -633,9 +656,7 @@ function renderLists() {
       <span class="list-count">${plural(n, 'word')}</span>
     </button>`;
   }).join('');
-  const customN = parseCustom($('#custom-words').value).length;
-  $('#custom-count').textContent = customN ? `${plural(customN, 'word')} saved in this browser.` : 'Your words are saved in this browser.';
-  $('#practise-custom').hidden = !customN;
+  renderBank();
   renderHero();
 }
 
@@ -664,7 +685,8 @@ $('#list-grid').addEventListener('click', e => {
   renderLists();
   if (selectedList === 'custom' && !listWords('custom').length) {
     showTab('words');
-    $('#custom-words').focus();
+    showPane('add');
+    $('#add-word').focus();
   }
 });
 
@@ -682,12 +704,6 @@ $('#shuffle').addEventListener('change', () => {
   renderHero();
 });
 
-$('#custom-words').value = store.get('customWords', '');
-$('#custom-words').addEventListener('input', () => {
-  store.set('customWords', $('#custom-words').value);
-  renderLists();
-});
-
 $('#practise-custom').addEventListener('click', () => {
   selectedList = 'custom';
   store.set('selectedList', selectedList);
@@ -695,21 +711,484 @@ $('#practise-custom').addEventListener('click', () => {
   $('#setup').requestSubmit();
 });
 
+/* ---------- Word bank ---------- */
+
+const PENCIL_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
+const TRASH_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>';
+const WORD_OK = /^[a-z][a-z' -]*$/i;
+const cleanText = s => String(s || '').replace(/\s+/g, ' ').trim().replace(/^["\u201c\u201d]+|["\u201c\u201d]+$/g, '').trim();
+const cleanWord = s => cleanText(s).replace(/^'+|[.,;:!?]+$/g, '').trim();
+const wordProblem = w => (!w ? 'Type a word.'
+  : w.length > MAX_TYPED ? 'That word is too long.'
+  : !WORD_OK.test(w) ? 'Words can only use letters, spaces, hyphens and apostrophes.' : '');
+
+let bankFilter = 'all';
+let editingKey = '';
+let pendingImport = null;
+
+function showPane(name) {
+  renderPills('#words-tabs', 'pane', name);
+  $$('[data-pane-body]').forEach(p => (p.hidden = p.dataset.paneBody !== name));
+  if (name === 'bank') renderBank();
+}
+
+$('#words-tabs').addEventListener('click', e => {
+  const b = e.target.closest('[data-pane]');
+  if (b) showPane(b.dataset.pane);
+});
+$('#words').addEventListener('click', e => {
+  const b = e.target.closest('[data-goto-pane]');
+  if (b) showPane(b.dataset.gotoPane);
+});
+
+const bankItem = b => `<li class="bank-item">
+    <div class="bank-main">
+      <p class="bank-word">${esc(b.word)}<button class="say" type="button" data-speak="${esc(b.word)}" aria-label="Say ${esc(b.word)}" title="Say the word">${SPEAKER_ICON}</button></p>
+      ${b.meaning ? `<p class="bank-def">${spoken(b.meaning)}</p>` : '<p class="bank-def none">No meaning yet</p>'}
+      ${b.example ? `<p class="example">${spoken(`"${b.example}"`)}</p>` : ''}
+    </div>
+    <div class="bank-actions">
+      <button class="icon-btn" type="button" data-edit-word="${esc(b.word)}" aria-label="Edit ${esc(b.word)}" title="Edit">${PENCIL_ICON}</button>
+      <button class="icon-btn" type="button" data-delete-word="${esc(b.word)}" aria-label="Delete ${esc(b.word)}" title="Delete">${TRASH_ICON}</button>
+    </div>
+  </li>`;
+
+function renderBank() {
+  const withMeaning = bank.filter(b => b.meaning).length;
+  $('#bank-count').textContent = bank.length
+    ? `${plural(bank.length, 'word')}, ${withMeaning} with a meaning. Saved in this browser.`
+    : 'Saved in this browser.';
+  $('#practise-custom').hidden = !bank.length;
+  $('#bank-tools').hidden = !bank.length;
+  $('#bank-foot').hidden = !bank.length;
+  $('#bank-empty').hidden = Boolean(bank.length);
+  $('#fill-meanings').hidden = withMeaning === bank.length;
+  renderPills('#bank-filter', 'filter', bankFilter);
+  const q = $('#bank-search').value.trim().toLowerCase();
+  const rows = bank.slice().reverse()
+    .filter(b => bankFilter === 'all' || (bankFilter === 'meaning') === Boolean(b.meaning))
+    .filter(b => !q || b.word.toLowerCase().includes(q) || (b.meaning || '').toLowerCase().includes(q));
+  $('#bank-list').innerHTML = rows.length || !bank.length
+    ? rows.map(bankItem).join('')
+    : '<li class="bank-none muted small">No words match.</li>';
+}
+
+$('#bank-search').addEventListener('input', renderBank);
+$('#bank-filter').addEventListener('click', e => {
+  const b = e.target.closest('[data-filter]');
+  if (!b) return;
+  bankFilter = b.dataset.filter;
+  renderBank();
+});
+
+$('#bank-list').addEventListener('click', e => {
+  const edit = e.target.closest('[data-edit-word]');
+  const del = e.target.closest('[data-delete-word]');
+  if (edit) startEdit(edit.dataset.editWord);
+  if (!del) return;
+  const i = bank.findIndex(b => bankKey(b.word) === bankKey(del.dataset.deleteWord));
+  if (i < 0) return;
+  const [removed] = bank.splice(i, 1);
+  saveBank();
+  renderLists();
+  toast(`Deleted "${removed.word}"`, {
+    label: 'Undo',
+    run: () => {
+      bank.splice(i, 0, removed);
+      saveBank();
+      renderLists();
+    },
+  });
+});
+
+$('#clear-bank').addEventListener('click', () => {
+  if (!confirm(`Delete all ${plural(bank.length, 'word')} from your word bank? Export a backup first if you might want them later.`)) return;
+  bank = [];
+  saveBank();
+  renderLists();
+});
+
+$('#fill-meanings').addEventListener('click', async () => {
+  const btn = $('#fill-meanings');
+  const todo = bank.filter(b => !b.meaning);
+  let found = 0;
+  btn.disabled = true;
+  for (let i = 0; i < todo.length; i++) {
+    btn.textContent = `Finding meanings ${i + 1} of ${todo.length}\u2026`;
+    try {
+      const { def, example } = entryFacts(await lookup(todo[i].word));
+      if (def) {
+        todo[i].meaning = def;
+        if (!todo[i].example) todo[i].example = example;
+        found++;
+      }
+    } catch {}
+  }
+  saveBank();
+  btn.disabled = false;
+  btn.textContent = 'Fill missing meanings';
+  renderBank();
+  const missed = todo.length - found;
+  toast(found
+    ? `Added ${plural(found, 'meaning')}.${missed ? ` ${missed} not found in the dictionary.` : ''}`
+    : 'The dictionary had no meanings for these words.');
+});
+
+/* Add or edit one word */
+
+function resetAddForm() {
+  editingKey = '';
+  $('#add-form').reset();
+  $('#add-title').textContent = 'Add a word';
+  $('#add-save').textContent = 'Add to word bank';
+  $('#add-cancel').hidden = true;
+  $('#add-error').textContent = '';
+}
+
+function startEdit(word) {
+  const b = bankEntry(word);
+  if (!b) return;
+  showPane('add');
+  editingKey = bankKey(b.word);
+  $('#add-word').value = b.word;
+  $('#add-meaning').value = b.meaning || '';
+  $('#add-example').value = b.example || '';
+  $('#add-title').textContent = `Edit "${b.word}"`;
+  $('#add-save').textContent = 'Save changes';
+  $('#add-cancel').hidden = false;
+  $('#add-error').textContent = '';
+  $('#add-word').focus();
+}
+
+$('#add-cancel').addEventListener('click', () => {
+  resetAddForm();
+  showPane('bank');
+});
+
+$('#add-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const word = cleanWord($('#add-word').value);
+  const meaning = cleanText($('#add-meaning').value);
+  const example = cleanText($('#add-example').value);
+  const problem = wordProblem(word);
+  const error = msg => {
+    $('#add-error').textContent = msg;
+    $('#add-word').focus();
+  };
+  if (problem) return error(problem);
+  const same = bankEntry(word);
+
+  if (editingKey) {
+    const b = bankEntry(editingKey);
+    if (same && same !== b) return error(`"${same.word}" is already in your word bank.`);
+    if (b) Object.assign(b, { word, meaning, example });
+    else bank.push({ word, meaning, example });
+    saveBank();
+    resetAddForm();
+    showPane('bank');
+    renderLists();
+    toast(`Saved "${word}"`);
+    return;
+  }
+
+  if (same) {
+    if (!meaning && !example) return error(`"${same.word}" is already in your word bank.`);
+    if (meaning) same.meaning = meaning;
+    if (example) same.example = example;
+    toast(`Updated "${same.word}"`);
+  } else {
+    bank.push({ word, meaning, example });
+    toast(`Added "${word}"`);
+  }
+  saveBank();
+  resetAddForm();
+  renderLists();
+  $('#add-word').focus();
+});
+
+$('#find-meaning').addEventListener('click', async () => {
+  const word = cleanWord($('#add-word').value);
+  const btn = $('#find-meaning');
+  if (!word) {
+    $('#add-error').textContent = 'Type the word first.';
+    $('#add-word').focus();
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = 'Looking up\u2026';
+  try {
+    const { def, example } = entryFacts(await lookup(word));
+    if (def) {
+      $('#add-meaning').value = def;
+      if (!$('#add-example').value.trim()) $('#add-example').value = example;
+      $('#add-error').textContent = '';
+    } else {
+      $('#add-error').textContent = `The dictionary has no meaning for "${word}". You can type your own.`;
+    }
+  } catch {
+    $('#add-error').textContent = "Couldn't reach the dictionary. Try again in a moment.";
+  }
+  btn.disabled = false;
+  btn.textContent = 'Find in dictionary';
+});
+
+/* Import */
+
+// Splits one CSV line, keeping commas that sit inside quotes.
+function splitCells(line, delim) {
+  const cells = [];
+  let cell = '';
+  let quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (quoted) {
+      if (c === '"' && line[i + 1] === '"') {
+        cell += '"';
+        i++;
+      } else if (c === '"') quoted = false;
+      else cell += c;
+    } else if (c === '"') quoted = true;
+    else if (c === delim) {
+      cells.push(cell);
+      cell = '';
+    } else cell += c;
+  }
+  cells.push(cell);
+  return cells.map(s => s.trim());
+}
+
+function parseLine(raw) {
+  const line = raw.replace(/^\s*(?:\d+[.)]\s+|[-*\u2022]\s+)/, '').trim();
+  if (!line) return [];
+  if (/[\t|]/.test(line)) {
+    const [word, meaning = '', example = ''] = line.split(/\s*[\t|]\s*/);
+    return [{ word, meaning, example }];
+  }
+  const pair = line.match(/^(.+?)\s*(?:\s-\s|[\u2013\u2014:=])\s*(.+)$/);
+  if (pair && !pair[1].includes(',')) return [{ word: pair[1], meaning: pair[2] }];
+  const cells = splitCells(line, line.includes(',') ? ',' : ';');
+  // A cell with several words is a meaning, not another word to practise.
+  if (cells.length > 1 && cells.slice(1).some(c => c.split(/\s+/).length > 2)) {
+    return [{ word: cells[0], meaning: cells[1], example: cells[2] || '' }];
+  }
+  return cells.map(word => ({ word }));
+}
+
+function readImport(text) {
+  const t = text.replace(/^\uFEFF/, '').trim();
+  if (/^[[{]/.test(t)) {
+    try {
+      const data = JSON.parse(t);
+      if (data && data.app === 'WordWise') return { backup: data, rows: Array.isArray(data.words) ? data.words : [] };
+      const list = Array.isArray(data) ? data : Array.isArray(data.words) ? data.words : [];
+      return {
+        rows: list.map(x => (typeof x === 'string' ? { word: x }
+          : { word: x?.word || x?.term, meaning: x?.meaning || x?.definition, example: x?.example })),
+      };
+    } catch {}
+  }
+  const rows = [];
+  t.split(/\r?\n/).forEach((line, i) => {
+    if (i === 0 && /^\W*(word|term)s?\b/i.test(line) && /meaning|definition/i.test(line)) return;
+    rows.push(...parseLine(line));
+  });
+  return { rows };
+}
+
+function planImport(rows) {
+  const seen = new Set();
+  const plan = [];
+  rows.forEach(r => {
+    const word = cleanWord(r?.word);
+    if (!word || seen.has(bankKey(word))) return;
+    seen.add(bankKey(word));
+    const meaning = cleanText(r.meaning);
+    const example = cleanText(r.example);
+    const problem = wordProblem(word);
+    const have = bankEntry(word);
+    const status = problem ? 'skip'
+      : !have ? 'new'
+      : (meaning && meaning !== have.meaning) || (example && example !== have.example) ? 'update' : 'same';
+    plan.push({ word, meaning, example, status, problem });
+  });
+  return plan;
+}
+
+const IMPORT_STATS = { new: n => `${n} new`, update: n => `${n} updated`, same: n => `${n} already saved`, skip: n => `${n} skipped` };
+const IMPORT_TAGS = { new: 'New', update: 'Update', same: 'Saved', skip: 'Skipped' };
+
+const previewRow = p => `<li class="pv-${p.status}">
+    <div><b>${esc(p.word)}</b><span>${p.problem ? esc(p.problem) : p.meaning ? esc(p.meaning) : '<i>No meaning</i>'}</span></div>
+    <em>${IMPORT_TAGS[p.status]}</em>
+  </li>`;
+
+function backupNote(backup) {
+  let sessions = 0;
+  try { sessions = JSON.parse(backup.data?.history || '[]').length; } catch {}
+  const when = new Date(backup.exported);
+  const date = isNaN(when) ? '' : ` from ${when.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}`;
+  return `<p class="backup-note">WordWise backup${date} with ${plural((backup.words || []).length, 'word')} and ${plural(sessions, 'past session')}.
+    <b>Add words</b> keeps everything you have and adds its words. <b>Restore everything</b> swaps your words, progress and settings for the backup.</p>`;
+}
+
+function showPreview({ rows, backup }, source) {
+  const plan = planImport(rows);
+  const box = $('#import-preview');
+  if (!plan.length && !backup) {
+    box.hidden = true;
+    toast("Couldn't find any words in that.");
+    return;
+  }
+  pendingImport = { plan, backup };
+  const count = s => plan.filter(p => p.status === s).length;
+  const fresh = count('new');
+  const updates = count('update');
+  const label = fresh && updates ? `Add ${fresh}, update ${updates}`
+    : fresh ? `Add ${plural(fresh, 'word')}`
+    : updates ? `Update ${plural(updates, 'word')}` : 'Nothing new to add';
+  const shown = plan.slice(0, 100);
+  box.innerHTML = `<div class="card-head">
+      <h2>Check before adding</h2>
+      <p class="muted small">From ${esc(source)}</p>
+    </div>
+    ${backup ? backupNote(backup) : ''}
+    <div class="import-stats">${Object.keys(IMPORT_STATS).filter(count).map(s => `<span class="st st-${s}">${IMPORT_STATS[s](count(s))}</span>`).join('')}</div>
+    <ul class="preview-list">${shown.map(previewRow).join('')}</ul>
+    ${plan.length > shown.length ? `<p class="muted small more">and ${plural(plan.length - shown.length, 'more word')}</p>` : ''}
+    <div class="add-actions">
+      <button class="btn ghost" type="button" data-import="cancel">Cancel</button>
+      ${backup ? '<button class="btn ghost" type="button" data-import="restore">Restore everything</button>' : ''}
+      <button class="btn" type="button" data-import="apply"${fresh + updates ? '' : ' disabled'}>${label}</button>
+    </div>`;
+  box.hidden = false;
+  box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function applyImport() {
+  let added = 0;
+  let updated = 0;
+  pendingImport.plan.forEach(p => {
+    const have = bankEntry(p.word);
+    if (p.status === 'new' && !have) {
+      bank.push({ word: p.word, meaning: p.meaning, example: p.example });
+      added++;
+    } else if (p.status === 'update' && have) {
+      if (p.meaning) have.meaning = p.meaning;
+      if (p.example) have.example = p.example;
+      updated++;
+    }
+  });
+  saveBank();
+  closePreview();
+  $('#import-text').value = '';
+  renderLists();
+  showPane('bank');
+  toast([added && `Added ${plural(added, 'word')}`, updated && `updated ${updated}`].filter(Boolean).join(', ') || 'Nothing changed');
+}
+
+function restoreBackup(backup) {
+  if (!confirm('Replace your words, progress and settings with this backup? What you have now will be lost.')) return;
+  ['history', 'mistakes', 'recent'].forEach(k => localStorage.removeItem(k));
+  Object.entries(backup.data || {}).forEach(([k, v]) => {
+    if (k !== AUTH_KEY && typeof v === 'string') localStorage.setItem(k, v);
+  });
+  store.set('wordBank', (backup.words || [])
+    .map(w => ({ word: cleanWord(w?.word), meaning: cleanText(w?.meaning), example: cleanText(w?.example) }))
+    .filter(w => !wordProblem(w.word)));
+  location.reload();
+}
+
+function closePreview() {
+  pendingImport = null;
+  $('#import-preview').hidden = true;
+}
+
+$('#import-preview').addEventListener('click', e => {
+  const b = e.target.closest('[data-import]');
+  if (!b || !pendingImport) return;
+  if (b.dataset.import === 'apply') applyImport();
+  else if (b.dataset.import === 'restore') restoreBackup(pendingImport.backup);
+  else closePreview();
+});
+
 $('#import-file').addEventListener('change', e => {
   const file = e.target.files && e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = () => {
-    const text = String(reader.result || '').replace(/^\uFEFF/, '');
-    const existing = $('#custom-words').value.trim();
-    $('#custom-words').value = existing ? `${existing}\n${text}` : text;
-    store.set('customWords', $('#custom-words').value);
-    renderLists();
-    toast(`Imported ${file.name}`);
+    showPreview(readImport(String(reader.result || '')), file.name);
     e.target.value = '';
   };
   reader.onerror = () => toast('Could not read that file.');
   reader.readAsText(file);
+});
+
+$('#import-preview-btn').addEventListener('click', () => {
+  if (!$('#import-text').value.trim()) {
+    toast('Paste some words first, or choose a file.');
+    $('#import-text').focus();
+    return;
+  }
+  showPreview(readImport($('#import-text').value), 'what you pasted');
+});
+
+/* Export */
+
+const today = () => new Date().toISOString().slice(0, 10);
+const csvCell = s => (/[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
+
+function bankLines() {
+  return bank.map(b => {
+    const parts = [b.word, b.meaning || '', b.example || ''];
+    while (parts.length > 1 && !parts[parts.length - 1]) parts.pop();
+    return parts.join(' | ');
+  });
+}
+
+function backupData() {
+  const data = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k !== AUTH_KEY && k !== 'wordBank') data[k] = localStorage.getItem(k);
+  }
+  return { app: 'WordWise', version: 1, exported: new Date().toISOString(), words: bank, data };
+}
+
+function download(name, text, type) {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const a = Object.assign(document.createElement('a'), { href: url, download: name });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+$$('[data-export]').forEach(b => b.addEventListener('click', () => {
+  const kind = b.dataset.export;
+  if (kind !== 'backup' && !bank.length) {
+    toast('Your word bank is empty. Add some words first.');
+    return;
+  }
+  if (kind === 'txt') download(`wordwise-words-${today()}.txt`, `${bankLines().join('\n')}\n`, 'text/plain');
+  if (kind === 'csv') {
+    const rows = bank.map(x => [x.word, x.meaning || '', x.example || ''].map(csvCell).join(','));
+    download(`wordwise-words-${today()}.csv`, `\uFEFF${['word,meaning,example', ...rows].join('\r\n')}\r\n`, 'text/csv');
+  }
+  if (kind === 'backup') download(`wordwise-backup-${today()}.json`, JSON.stringify(backupData(), null, 1), 'application/json');
+  toast('Saved to your downloads.');
+}));
+
+$('#copy-bank').addEventListener('click', async () => {
+  if (!bank.length) {
+    toast('Your word bank is empty. Add some words first.');
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(bankLines().join('\n'));
+    toast(`Copied ${plural(bank.length, 'word')}.`);
+  } catch {
+    toast('Copy did not work in this browser.');
+  }
 });
 
 /* ---------- Dictation session ---------- */
@@ -872,6 +1351,8 @@ async function examplesFor(word) {
 
 async function speakSentence() {
   const word = current();
+  const mine = bankEntry(word)?.example;
+  if (mine) return speak(`${word}. ${mine}. ${word}.`);
   try {
     const examples = (await examplesFor(word)).map(d => d.example).filter(Boolean);
     const sentence = examples.find(x => x.toLowerCase().includes(word.toLowerCase())) || examples[0];
@@ -887,6 +1368,8 @@ async function speakSentence() {
 
 async function speakMeaning() {
   const word = current();
+  const mine = bankEntry(word)?.meaning;
+  if (mine) return speak(`It means: ${mine}`);
   try {
     const defs = await examplesFor(word);
     if (defs.length) speak(`It means: ${defs[0].definition}`);
@@ -1066,13 +1549,20 @@ function showWrong(word, typed) {
   if (finePointer) $('#bad-next').focus();
 }
 
-function fillResult(word, entries, correct) {
-  const { phonetic, def, example, pos, similar } = entryFacts(entries);
+function fillResult(word, entries, correct, failed) {
+  const facts = entryFacts(entries);
+  const { phonetic, similar } = facts;
+  const mine = bankEntry(word);
+  // A saved meaning wins, and the dictionary's part of speech may not match it.
+  const def = mine?.meaning || facts.def;
+  const example = mine?.example || (mine?.meaning ? '' : facts.example);
+  const pos = mine?.meaning ? '' : facts.pos;
   if (correct) {
     if (phonetic) $('#ok-phon').insertAdjacentHTML('afterbegin', `<span>${esc(phonetic)}</span>`);
     $('#ok-pos').textContent = pos;
     $('#ok-pos').hidden = !pos;
-    $('#ok-def').innerHTML = def ? spoken(def) : 'Tap Meaning for the full dictionary entry.';
+    $('#ok-def').innerHTML = def ? spoken(def)
+      : failed ? "Couldn't load the meaning. Tap Meaning to try again." : 'Tap Meaning for the full dictionary entry.';
     $('#ok-ex').innerHTML = example ? spoken(`"${example}"`) : '';
     $('#ok-ex').hidden = !example;
     $('#ok-syn').innerHTML = similar.length
@@ -1107,14 +1597,14 @@ async function record(word, typed) {
     if (typed) buzz([25, 40, 25]);
   }
 
+  let entries = null;
+  let failed = false;
   try {
-    const entries = await lookup(word);
-    if (session.index === index && session.checked) fillResult(word, entries, correct);
+    entries = await lookup(word);
   } catch {
-    if (session.index === index && session.checked && correct) {
-      $('#ok-def').textContent = "Couldn't load the meaning. Tap Meaning to try again.";
-    }
+    failed = true;
   }
+  if (session.index === index && session.checked) fillResult(word, entries, correct, failed);
 }
 
 function next() {
@@ -1274,11 +1764,21 @@ async function openSheet(word) {
   sheetWord = word;
   $('#sheet-wrap').hidden = false;
   $('#sheet-body').innerHTML = `${sheetTop(word, '')}<p class="muted">Looking up...</p>`;
+  let html;
   try {
-    const entries = await lookup(word);
-    if (sheetWord === word) $('#sheet-body').innerHTML = sheetHtml(word, entries);
+    html = sheetHtml(word, await lookup(word));
   } catch (err) {
-    if (sheetWord === word) $('#sheet-body').innerHTML = `${sheetTop(word, '')}<p class="error">Couldn't load the dictionary entry. ${esc(err.message)}</p>`;
+    html = `${sheetTop(word, '')}<p class="error">Couldn't load the dictionary entry. ${esc(err.message)}</p>`;
+  }
+  if (sheetWord !== word) return;
+  $('#sheet-body').innerHTML = html;
+  const mine = bankEntry(word);
+  if (mine?.meaning) {
+    $('#sheet-body .sheet-top').insertAdjacentHTML('afterend', `<div class="my-meaning">
+      <p class="lab">Your meaning</p>
+      <p class="def">${spoken(mine.meaning)}</p>
+      ${mine.example ? `<p class="example">${spoken(`"${mine.example}"`)}</p>` : ''}
+    </div>`);
   }
 }
 

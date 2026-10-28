@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap">
-  <link rel="stylesheet" href="styles.css?v=16">
+  <link rel="stylesheet" href="styles.css?v=17">
 </head>
 <body class="locked">
   <div id="gate" class="gate">
@@ -195,32 +195,132 @@
     <section id="words" class="panel" hidden>
       <div class="greeting">
         <p class="eyebrow">My words</p>
-        <h1>Add words to practise</h1>
+        <h1>Your word bank</h1>
       </div>
-      <div id="custom-wrap" class="card custom">
-        <div class="custom-head">
-          <div>
-            <h2>Add your own words</h2>
-            <p class="muted small">Type them, paste a list from ChatGPT, or import a .txt / .csv file. Commas or new lines both work.</p>
+      <div id="words-tabs" class="segmented subtabs" role="tablist" aria-label="My words">
+        <button type="button" role="tab" data-pane="bank" class="active">Word bank</button>
+        <button type="button" role="tab" data-pane="add">Add</button>
+        <button type="button" role="tab" data-pane="import">Import</button>
+        <button type="button" role="tab" data-pane="export">Export</button>
+      </div>
+
+      <div class="words-pane" data-pane-body="bank">
+        <div class="card bank">
+          <div class="bank-head">
+            <div>
+              <h2>Word bank</h2>
+              <p id="bank-count" class="muted small">Saved in this browser.</p>
+            </div>
+            <button id="practise-custom" class="btn small" type="button" hidden>Practise all</button>
           </div>
-          <label class="btn ghost small file-btn">
-            Import file
-            <input id="import-file" type="file" accept=".txt,.csv,text/plain,text/csv">
-          </label>
-        </div>
-        <textarea id="custom-words" rows="5" placeholder="necessary, rhythm, conscience"></textarea>
-        <div class="custom-foot">
-          <p id="custom-count" class="muted small">Your words are saved in this browser.</p>
-          <button id="practise-custom" class="btn small" type="button" hidden>Practise these words</button>
+          <div id="bank-tools" class="bank-tools">
+            <input id="bank-search" type="search" placeholder="Search words or meanings" aria-label="Search your words" autocomplete="off">
+            <div id="bank-filter" class="segmented" role="radiogroup" aria-label="Show">
+              <button type="button" role="radio" data-filter="all">All</button>
+              <button type="button" role="radio" data-filter="meaning">With meaning</button>
+              <button type="button" role="radio" data-filter="missing">No meaning</button>
+            </div>
+          </div>
+          <ul id="bank-list" class="bank-list"></ul>
+          <div id="bank-empty" class="bank-empty" hidden>
+            <p class="empty-title">Your word bank is empty</p>
+            <p class="muted small">Add words one at a time with their meaning, or import a whole list.</p>
+            <div class="bank-empty-actions">
+              <button class="btn small" type="button" data-goto-pane="add">Add a word</button>
+              <button class="btn ghost small" type="button" data-goto-pane="import">Import a list</button>
+            </div>
+          </div>
+          <div id="bank-foot" class="bank-foot">
+            <button id="fill-meanings" class="btn ghost small" type="button">Fill missing meanings</button>
+            <button id="clear-bank" class="linkbtn danger" type="button">Delete all words</button>
+          </div>
         </div>
       </div>
-      <div class="card gpt-card">
-        <div class="card-head">
-          <h2>Get a list from ChatGPT</h2>
-          <p class="muted small">Copy this, paste it into ChatGPT, then paste its answer into the box above.</p>
+
+      <div class="words-pane" data-pane-body="add" hidden>
+        <form id="add-form" class="card add-form" novalidate>
+          <div class="card-head">
+            <h2 id="add-title">Add a word</h2>
+            <p class="muted small">Only the word is needed. Its meaning shows after you spell it, and the Meaning button reads it out.</p>
+          </div>
+          <label for="add-word">Word</label>
+          <input id="add-word" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="40" placeholder="necessary">
+          <div class="label-row">
+            <label for="add-meaning">Meaning <span class="muted">(optional)</span></label>
+            <button id="find-meaning" class="linkbtn" type="button">Find in dictionary</button>
+          </div>
+          <textarea id="add-meaning" rows="2" placeholder="Needed; required."></textarea>
+          <label for="add-example">Example sentence <span class="muted">(optional)</span></label>
+          <input id="add-example" type="text" autocomplete="off" placeholder="Water is necessary for life.">
+          <p id="add-error" class="error-text" role="alert"></p>
+          <div class="add-actions">
+            <button id="add-cancel" class="btn ghost" type="button" hidden>Cancel</button>
+            <button id="add-save" class="btn" type="submit">Add to word bank</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="words-pane" data-pane-body="import" hidden>
+        <div class="card">
+          <div class="card-head">
+            <h2>Import words</h2>
+            <p class="muted small">Words can come with a meaning and an example. Choose a file or paste a list, check the preview, then add them.</p>
+          </div>
+          <label class="drop">
+            <input id="import-file" type="file" accept=".txt,.csv,.tsv,.json,text/plain,text/csv,application/json">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>
+            <b>Choose a file</b>
+            <span class="muted small">.txt, .csv or a WordWise backup (.json)</span>
+          </label>
+          <p class="or">or paste a list</p>
+          <textarea id="import-text" rows="6" spellcheck="false" placeholder="rhythm | a strong, regular repeated pattern | Dance to the rhythm.&#10;necessary - needed; required&#10;conscience, separate, receive"></textarea>
+          <details class="formats">
+            <summary>Formats that work</summary>
+            <ul>
+              <li><code>word | meaning | example</code>, one word per line. This keeps the most.</li>
+              <li><code>word - meaning</code> or <code>word: meaning</code></li>
+              <li>A spreadsheet saved as .csv with the columns word, meaning, example</li>
+              <li>Just words, split by commas or new lines</li>
+            </ul>
+          </details>
+          <button id="import-preview-btn" class="btn" type="button">Preview</button>
         </div>
-        <p id="gpt-prompt" class="gpt-prompt">Give me 20 commonly misspelled English words as one comma-separated list, with nothing else.</p>
-        <button id="copy-prompt" class="btn ghost small" type="button">Copy</button>
+        <div id="import-preview" class="card import-preview" hidden></div>
+        <div class="card gpt-card">
+          <div class="card-head">
+            <h2>Get words from ChatGPT</h2>
+            <p class="muted small">Copy this, paste it into ChatGPT, then paste its answer in the box above.</p>
+          </div>
+          <p id="gpt-prompt" class="gpt-prompt">Give me 20 commonly misspelled English words. Put each one on its own line as: word | short meaning | short example sentence. No numbers, headings or anything else.</p>
+          <button id="copy-prompt" class="btn ghost small" type="button">Copy prompt</button>
+        </div>
+      </div>
+
+      <div class="words-pane" data-pane-body="export" hidden>
+        <div class="card">
+          <div class="card-head">
+            <h2>Export</h2>
+            <p class="muted small">Save your words to a file to keep them safe or move them to another device.</p>
+          </div>
+          <div class="export-grid">
+            <button class="export-opt" type="button" data-export="txt">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+              <b>Text list</b>
+              <span>.txt, one word per line with its meaning</span>
+            </button>
+            <button class="export-opt" type="button" data-export="csv">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
+              <b>Spreadsheet</b>
+              <span>.csv for Excel or Google Sheets</span>
+            </button>
+            <button class="export-opt wide" type="button" data-export="backup">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>
+              <b>Full backup</b>
+              <span>.json with your words, meanings, progress, mistakes and settings. Import it on any device to get everything back.</span>
+            </button>
+          </div>
+          <button id="copy-bank" class="btn ghost small copy-bank" type="button">Copy list to clipboard</button>
+        </div>
       </div>
     </section>
 
@@ -515,7 +615,7 @@
     Definitions from the <a href="https://dictionaryapi.dev/" target="_blank" rel="noopener">Free Dictionary API</a>. Progress is saved only in this browser.
   </footer>
 
-  <script src="words.js?v=16"></script>
-  <script src="app.js?v=16"></script>
+  <script src="words.js?v=17"></script>
+  <script src="app.js?v=17"></script>
 </body>
 </html>
