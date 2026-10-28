@@ -171,6 +171,7 @@ function renderSettings() {
   const prefs = soundPrefs();
   $('#sfx-on').checked = prefs.sfx;
   $('#buzz-on').checked = prefs.buzz;
+  $('#say-after').checked = store.get('sayAfterCheck', true);
   renderPills('#key-pills', 'keyMode', prefs.keyMode);
 
   const canFull = fullscreenSupported();
@@ -183,6 +184,7 @@ function renderSettings() {
   $('#fs-tip').hidden = canFull || homeScreen;
 }
 
+$('#say-after').addEventListener('change', e => store.set('sayAfterCheck', e.target.checked));
 $('#sfx-on').addEventListener('change', e => {
   store.set('sfx', e.target.checked);
   sound('correct');
@@ -1472,6 +1474,14 @@ keys.addEventListener('click', e => {
 });
 $('#check').addEventListener('click', checkAnswer);
 
+// Reads back what you typed, letter by letter, without lighting up the Again button.
+$('#read-typed').addEventListener('mousedown', e => e.preventDefault());
+$('#read-typed').addEventListener('click', () => {
+  if (!canSpeak || !session.typed) return;
+  setSpeaking(false);
+  utter([...session.typed].map(c => KEY_NAMES[c] || c.toUpperCase()).join(', '), 0.85, ++speakId);
+});
+
 // A physical keyboard (computer or tablet) types into the same tiles.
 document.addEventListener('keydown', e => {
   if ($('#session').hidden || !$('#sheet-wrap').hidden || e.ctrlKey || e.metaKey || e.altKey) return;
@@ -1745,6 +1755,11 @@ async function record(word, typed) {
     showWrong(word, typed);
     sound(typed ? 'wrong' : 'skip');
     if (typed) buzz([25, 40, 25]);
+  }
+  if (store.get('sayAfterCheck', true)) {
+    // Waits for the longest chime (the streak one) so the word never plays over it.
+    const wait = soundPrefs().sfx ? 700 : 150;
+    setTimeout(() => { if (session.index === index && session.checked && !$('#session').hidden) speak(word); }, wait);
   }
 
   let entries = null;

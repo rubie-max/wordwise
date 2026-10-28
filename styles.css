@@ -303,6 +303,7 @@ body { --nav-h: 86px; }
 .voice-slot .popover-title { display: none; }
 .voice-slot .voice-panel .btn { justify-self: start; }
 .voice-panel label { font-size: .8rem; color: var(--muted); font-weight: 500; }
+.voice-panel .switch { font-size: .9rem; color: var(--text); }
 .voice-panel select { margin-top: .3rem; font-size: .86rem; padding: .45rem .6rem; }
 .rate-row #rate-value { float: right; color: var(--text); }
 .voice-panel input[type="range"] { width: 100%; margin-top: .4rem; accent-color: var(--accent); }
@@ -854,6 +855,8 @@ body.in-play { overflow: hidden; --nav-h: 0px; }
 .speller { flex: 1; min-height: 0; display: none; place-items: center; align-content: center; gap: 14px; text-align: center; }
 .play[data-state="typing"] .speller { display: grid; }
 .speller .tiles { width: 100%; padding: 0 4px; }
+.read-typed { justify-self: center; display: inline-flex; align-items: center; gap: 7px; }
+.read-typed svg { color: var(--accent); }
 .speller .tiles b { flex-basis: 38px; height: 50px; border-radius: 12px; font-size: 25px; }
 .speller .tiles.long b { height: 40px; border-radius: 10px; font-size: 19px; }
 

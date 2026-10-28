@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap">
-  <link rel="stylesheet" href="styles.css?v=28">
+  <link rel="stylesheet" href="styles.css?v=29">
 </head>
 <body class="locked">
   <div id="gate" class="gate">
@@ -387,6 +387,13 @@
           <label class="rate-row">Speed <span id="rate-value">0.9x</span>
             <input id="rate" type="range" min="0.5" max="1.5" step="0.1" value="0.9">
           </label>
+          <div class="toggles">
+            <label class="switch">
+              <input id="say-after" type="checkbox">
+              <span class="track" aria-hidden="true"></span>
+              <span>Say the word after Check<small>Right after the chime, hear the word again on the Correct and Not quite screens.</small></span>
+            </label>
+          </div>
           <p id="voice-tip" class="voice-tip" hidden>This device only has basic voices. For a natural voice, open WordWise in Microsoft Edge, or on iPhone download an Enhanced voice in Settings, Accessibility, Spoken Content, Voices.</p>
           <button id="voice-test" class="btn ghost small" type="button">Test voice</button>
             </div>
@@ -492,7 +499,10 @@
         <div class="speller" aria-live="polite">
           <span class="lab">Your spelling</span>
           <span id="typed" class="tiles"></span>
-          <span class="cap">Each letter becomes a tile as you type</span>
+          <button id="read-typed" class="hint read-typed" type="button" aria-label="Read out the letters you typed">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>
+            Read my letters
+          </button>
         </div>
         <div class="kb" role="group" aria-label="Letter keyboard">
           <div class="kb-tools">
@@ -652,7 +662,7 @@
     Definitions from the <a href="https://dictionaryapi.dev/" target="_blank" rel="noopener">Free Dictionary API</a>. Progress is saved only in this browser.
   </footer>
 
-  <script src="words.js?v=28"></script>
-  <script src="app.js?v=28"></script>
+  <script src="words.js?v=29"></script>
+  <script src="app.js?v=29"></script>
 </body>
 </html>
