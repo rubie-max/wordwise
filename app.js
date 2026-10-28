@@ -170,17 +170,20 @@ function renderSettings() {
   renderPills('#goal-pills', 'goal', store.get('dailyGoal', 10));
   const prefs = soundPrefs();
   $('#sfx-on').checked = prefs.sfx;
-  $('#keys-on').checked = prefs.keys;
   $('#buzz-on').checked = prefs.buzz;
+  renderPills('#key-pills', 'keyMode', prefs.keyMode);
 }
 
 $('#sfx-on').addEventListener('change', e => {
   store.set('sfx', e.target.checked);
   sound('correct');
 });
-$('#keys-on').addEventListener('change', e => {
-  store.set('keySounds', e.target.checked);
-  if (e.target.checked) keyClick(1900);
+$('#key-pills').addEventListener('click', e => {
+  const b = e.target.closest('[data-key-mode]');
+  if (!b) return;
+  store.set('keyMode', b.dataset.keyMode);
+  renderPills('#key-pills', 'keyMode', b.dataset.keyMode);
+  keyFeedback('a');
 });
 $('#buzz-on').addEventListener('change', e => {
   store.set('vibrate', e.target.checked);
@@ -341,7 +344,11 @@ const SOUNDS = {
   goal: () => tones([[1046.5, 0, 0.1], [1318.51, 0.08, 0.1], [1567.98, 0.16, 0.1], [2093, 0.24, 0.4]], { type: 'sine', volume: 0.1 }),
 };
 
-const soundPrefs = () => ({ sfx: store.get('sfx', true), keys: store.get('keySounds', true), buzz: store.get('vibrate', true) });
+const soundPrefs = () => ({
+  sfx: store.get('sfx', true),
+  buzz: store.get('vibrate', true),
+  keyMode: store.get('keyMode', store.get('keySounds', true) ? 'say' : 'off'),
+});
 
 function sound(name) {
   if (soundPrefs().sfx) SOUNDS[name]?.();
@@ -351,10 +358,28 @@ function buzz(pattern) {
   if (soundPrefs().buzz && navigator.vibrate) navigator.vibrate(pattern);
 }
 
+const KEY_NAMES = { ' ': 'space', "'": 'apostrophe', '-': 'dash' };
+
+function sayKey(key) {
+  if (!canSpeak) return;
+  speechSynthesis.cancel();
+  speakId++;
+  setSpeaking(false);
+  const u = new SpeechSynthesisUtterance(KEY_NAMES[key] || key.toUpperCase());
+  const voice = voices.find(v => v.name === $('#voice').value);
+  if (voice) u.voice = voice;
+  u.lang = voice ? voice.lang : 'en-US';
+  u.rate = 1.2;
+  speechSynthesis.speak(u);
+}
+
 function keyFeedback(key) {
-  const { keys } = soundPrefs();
-  if (keys) keyClick(key === 'Backspace' ? 1100 : 1900);
-  buzz(6);
+  const { keyMode } = soundPrefs();
+  if (keyMode === 'say') {
+    if (key === 'Backspace') keyClick(1100);
+    else sayKey(key);
+  } else if (keyMode === 'click') keyClick(key === 'Backspace' ? 1100 : 1900);
+  else if (keyMode === 'buzz' && navigator.vibrate) navigator.vibrate(8);
 }
 
 /* ---------- Dictionary data ---------- */
@@ -1289,7 +1314,25 @@ function showWord() {
   session.askedAt = Date.now();
   renderTyped();
   setTimeout(() => { if (current() === word && !session.checked) speak(word); }, 300);
-  lookup(word).catch(() => {});
+  updateHints(word);
+  const upcoming = session.words[session.index + 1];
+  if (upcoming) lookup(upcoming).catch(() => {});
+}
+
+// Sentence and Meaning only show when there is something for them to read.
+async function updateHints(word) {
+  const mine = bankEntry(word);
+  const show = (meaning, example) => {
+    if (current() !== word) return;
+    $('#play-meaning').hidden = !meaning;
+    $('#play-sentence').hidden = !example;
+  };
+  show(Boolean(mine?.meaning), Boolean(mine?.example));
+  if (mine?.meaning && mine?.example) return;
+  try {
+    const defs = await examplesFor(word);
+    show(Boolean(mine?.meaning || defs.length), Boolean(mine?.example || defs.some(d => d.example)));
+  } catch {}
 }
 
 const keys = $('#kb-keys');
@@ -1335,8 +1378,10 @@ document.addEventListener('keydown', e => {
   const el = e.target instanceof Element ? e.target : document.body;
   if (el.closest('input, select, textarea')) return;
   const asking = !session.checked;
-  if (asking && /^[a-z' -]$/i.test(e.key)) typeKey(e.key.toLowerCase());
-  else if (asking && e.key === 'Backspace') typeKey('Backspace');
+  if (asking && /^[a-z' -]$/i.test(e.key)) {
+    typeKey(e.key.toLowerCase());
+    if (soundPrefs().keyMode === 'say' && !e.repeat) sayKey(e.key.toLowerCase());
+  } else if (asking && e.key === 'Backspace') typeKey('Backspace');
   else if (e.key === 'Enter' && !el.closest('button')) {
     if (asking) checkAnswer();
     else next();
@@ -1521,6 +1566,7 @@ function showCorrect(word, secs) {
   $('#ok-phon').innerHTML = `<button class="chip" type="button" data-sheet-word="${esc(word)}">Meaning</button>`;
   $('#ok-pos').hidden = true;
   $('#ok-def').textContent = 'Loading meaning\u2026';
+  $('.ok-meaning').hidden = false;
   $('#ok-ex').hidden = true;
   $('#ok-syn').hidden = true;
   $('.res-ok .res-body').scrollTop = 0;
@@ -1545,6 +1591,7 @@ function showWrong(word, typed) {
   $('#bad-tip').hidden = !tip;
   $('#bad-tip span').innerHTML = tip;
   $('#bad-meaning').hidden = true;
+  $('#bad-entry').hidden = false;
   $('.res-bad .res-body').scrollTop = 0;
   if (finePointer) $('#bad-next').focus();
 }
@@ -1557,19 +1604,22 @@ function fillResult(word, entries, correct, failed) {
   const def = mine?.meaning || facts.def;
   const example = mine?.example || (mine?.meaning ? '' : facts.example);
   const pos = mine?.meaning ? '' : facts.pos;
+  const nothing = !entries && !def && !failed;
   if (correct) {
+    if (nothing) $('#ok-phon [data-sheet-word]')?.remove();
     if (phonetic) $('#ok-phon').insertAdjacentHTML('afterbegin', `<span>${esc(phonetic)}</span>`);
     $('#ok-pos').textContent = pos;
     $('#ok-pos').hidden = !pos;
-    $('#ok-def').innerHTML = def ? spoken(def)
-      : failed ? "Couldn't load the meaning. Tap Meaning to try again." : 'Tap Meaning for the full dictionary entry.';
+    $('#ok-def').innerHTML = def ? spoken(def) : failed ? "Couldn't load the meaning. Tap Meaning to try again." : '';
     $('#ok-ex').innerHTML = example ? spoken(`"${example}"`) : '';
     $('#ok-ex').hidden = !example;
     $('#ok-syn').innerHTML = similar.length
       ? `<span>Similar</span>${similar.map(w => `<button class="chip link" type="button" data-sheet-word="${esc(w)}">${esc(w)}</button>`).join('')}`
       : '';
     $('#ok-syn').hidden = !similar.length;
+    $('.ok-meaning').hidden = !def && !failed && !similar.length;
   } else {
+    $('#bad-entry').hidden = nothing;
     $('#bad-meaning').hidden = !def;
     $('#bad-def').innerHTML = def ? spoken(def) : '';
     $('#bad-ex').innerHTML = example ? spoken(`"${example}"`) : '';

@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap">
-  <link rel="stylesheet" href="styles.css?v=20">
+  <link rel="stylesheet" href="styles.css?v=19">
 </head>
 <body class="locked">
   <div id="gate" class="gate">
@@ -390,15 +390,19 @@
               <span>Right and wrong sounds<small>Chimes for answers, streaks and finishing a session</small></span>
             </label>
             <label class="switch">
-              <input id="keys-on" type="checkbox">
-              <span class="track" aria-hidden="true"></span>
-              <span>Key clicks<small>A soft click when you tap a letter</small></span>
-            </label>
-            <label class="switch">
               <input id="buzz-on" type="checkbox">
               <span class="track" aria-hidden="true"></span>
-              <span>Vibration<small>A small buzz on taps and wrong answers. Android phones only.</small></span>
+              <span>Vibrate on wrong answers<small>A short buzz when a spelling is wrong. Android phones only.</small></span>
             </label>
+            <div class="key-choice">
+              <span>When you tap a key<small>Hear the letter, a soft click, a small buzz, or nothing</small></span>
+              <div id="key-pills" class="segmented" role="radiogroup" aria-label="When you tap a key">
+                <button type="button" role="radio" data-key-mode="say">Say letter</button>
+                <button type="button" role="radio" data-key-mode="click">Click</button>
+                <button type="button" role="radio" data-key-mode="buzz">Vibrate</button>
+                <button type="button" role="radio" data-key-mode="off">Off</button>
+              </div>
+            </div>
           </div>
         </div>
         <div class="card">
@@ -472,13 +476,26 @@
         </div>
         <div class="kb" role="group" aria-label="Letter keyboard">
           <div class="kb-tools">
-            <button id="play-mini" class="mini-orb" type="button" aria-label="Play word">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>
+            <button id="play-mini" class="tool main" type="button" aria-label="Play the word again">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>
+              <span>Again</span>
             </button>
-            <button id="play-slow" class="hint" type="button">Slower</button>
-            <button id="play-sentence" class="hint" type="button">Sentence</button>
-            <button id="play-meaning" class="hint" type="button">Meaning</button>
-            <button id="skip" class="kb-skip" type="button">Skip</button>
+            <button id="play-slow" class="tool" type="button">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.3 19a10 10 0 1 1 17.4 0"/><path d="m12 14-4-4"/></svg>
+              <span>Slower</span>
+            </button>
+            <button id="play-sentence" class="tool" type="button" hidden>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></svg>
+              <span>Sentence</span>
+            </button>
+            <button id="play-meaning" class="tool" type="button" hidden>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5V5a2 2 0 0 1 2-2h13v16H6.5A2.5 2.5 0 0 0 4 21.5"/><path d="M19 17v4H6.5A2.5 2.5 0 0 1 4 18.5"/></svg>
+              <span>Meaning</span>
+            </button>
+            <button id="skip" class="tool skip" type="button">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4l10 8-10 8z"/><path d="M19 5v14"/></svg>
+              <span>Skip</span>
+            </button>
           </div>
           <div id="kb-keys" class="kb-keys"></div>
         </div>
@@ -615,7 +632,7 @@
     Definitions from the <a href="https://dictionaryapi.dev/" target="_blank" rel="noopener">Free Dictionary API</a>. Progress is saved only in this browser.
   </footer>
 
-  <script src="words.js?v=20"></script>
-  <script src="app.js?v=20"></script>
+  <script src="words.js?v=19"></script>
+  <script src="app.js?v=19"></script>
 </body>
 </html>
