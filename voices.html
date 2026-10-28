@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordWise voice test</title>
+<style>
+  :root {
+    --bg: #0a0c18; --surface: #161a33; --card: #11142a; --text: #eef0ff; --muted: #8d92b8;
+    --accent: #9b8cff; --accent-2: #4fe3d0; --accent-soft: #1d2148; --stroke: #262b4d;
+    --grad: linear-gradient(120deg, #9d8fff, #5fe6d4);
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 22px 16px 60px; display: grid; gap: 14px; }
+  h1 { margin: 0; font-size: 1.6rem; }
+  h2 { margin: 0 0 4px; font-size: 1.1rem; }
+  p { margin: 0; }
+  .muted { color: var(--muted); font-size: .9rem; }
+  .card { background: var(--card); border: 1px solid var(--stroke); border-radius: 16px; padding: 16px; display: grid; gap: 10px; }
+  textarea { width: 100%; min-height: 70px; resize: vertical; background: var(--surface); color: var(--text); border: 1px solid var(--stroke); border-radius: 12px; padding: 10px 12px; font: inherit; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  button, select { font: inherit; border-radius: 999px; border: 1px solid var(--stroke); background: var(--surface); color: var(--text); padding: 8px 14px; cursor: pointer; }
+  select { border-radius: 10px; padding: 8px 10px; max-width: 100%; }
+  button.play { background: var(--grad); color: #0a0c18; border: none; font-weight: 700; }
+  button.chip { padding: 5px 11px; font-size: .85rem; color: var(--muted); }
+  button:disabled { opacity: .5; cursor: default; }
+  .tag { font-size: .72rem; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); }
+  .status { font-size: .85rem; color: var(--accent-2); min-height: 1.2em; }
+  .status.err { color: #ff8f9c; }
+  .bar { height: 4px; border-radius: 4px; background: var(--surface); overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+  a { color: var(--accent); }
+  ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+</style>
+</head>
+<body>
+<main>
+  <div>
+    <h1>Voice test</h1>
+    <p class="muted">Free, open-source voices for WordWise. Type anything, pick a voice and press Play. Nothing here changes the app.</p>
+  </div>
+
+  <section class="card">
+    <h2>Text to read</h2>
+    <textarea id="text">We took the train to London.</textarea>
+    <div class="row" id="presets">
+      <button class="chip" type="button">We took the train to London.</button>
+      <button class="chip" type="button">Necessary. It is necessary to bring a packed lunch.</button>
+      <button class="chip" type="button">Conscientious. She is a conscientious student who never misses her homework.</button>
+      <button class="chip" type="button">Onomatopoeia. Words like sizzle and pop are examples of onomatopoeia.</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="row"><h2>Kokoro</h2><span class="tag">Most natural that runs on a phone</span></div>
+    <p class="muted">About 90 MB to download the first time, then it's saved on this device. Takes a few seconds to make each line.</p>
+    <div class="row">
+      <select id="k-voice">
+        <optgroup label="British">
+          <option value="bf_emma">Emma (female)</option>
+          <option value="bf_isabella">Isabella (female)</option>
+          <option value="bf_alice">Alice (female)</option>
+          <option value="bf_lily">Lily (female)</option>
+          <option value="bm_george">George (male)</option>
+          <option value="bm_lewis">Lewis (male)</option>
+          <option value="bm_daniel">Daniel (male)</option>
+          <option value="bm_fable">Fable (male)</option>
+        </optgroup>
+        <optgroup label="American">
+          <option value="af_heart">Heart (female)</option>
+          <option value="af_bella">Bella (female)</option>
+          <option value="af_nicole">Nicole (female)</option>
+          <option value="am_michael">Michael (male)</option>
+          <option value="am_fenrir">Fenrir (male)</option>
+        </optgroup>
+      </select>
+      <button class="play" id="k-play" type="button">Play</button>
+    </div>
+    <div class="bar"><i id="k-bar"></i></div>
+    <div class="status" id="k-status"></div>
+  </section>
+
+  <section class="card">
+    <div class="row"><h2>Piper</h2><span class="tag">Fastest</span></div>
+    <p class="muted">Each voice is its own download, 20 to 110 MB, saved after the first time. Then it makes a line in under a second.</p>
+    <div class="row">
+      <select id="p-voice">
+        <optgroup label="British">
+          <option value="en_GB-alba-medium">Alba (Scottish female)</option>
+          <option value="en_GB-cori-high">Cori (female, high quality)</option>
+          <option value="en_GB-jenny_dioco-medium">Jenny (female)</option>
+          <option value="en_GB-southern_english_female-low">Southern English (female, small)</option>
+          <option value="en_GB-alan-medium">Alan (male)</option>
+          <option value="en_GB-northern_english_male-medium">Northern English (male)</option>
+          <option value="en_GB-aru-medium">Aru (mixed voices)</option>
+          <option value="en_GB-semaine-medium">Semaine (mixed voices)</option>
+        </optgroup>
+        <optgroup label="American">
+          <option value="en_US-lessac-high">Lessac (female, high quality)</option>
+          <option value="en_US-amy-medium">Amy (female)</option>
+          <option value="en_US-ryan-high">Ryan (male, high quality)</option>
+          <option value="en_US-libritts_r-medium">LibriTTS (mixed voices)</option>
+        </optgroup>
+      </select>
+      <button class="play" id="p-play" type="button">Play</button>
+    </div>
+    <div class="bar"><i id="p-bar"></i></div>
+    <div class="status" id="p-status"></div>
+  </section>
+
+  <section class="card">
+    <div class="row"><h2>Sonia</h2><span class="tag">Live now for built-in words</span></div>
+    <p class="muted">The recorded voice WordWise already uses. These are recordings, so only the example lines can be played.</p>
+    <div class="row">
+      <button type="button" data-clip="train-sentence">Train sentence</button>
+      <button type="button" data-clip="necessary-sentence">Necessary sentence</button>
+      <button type="button" data-clip="conscientious-sentence">Conscientious sentence</button>
+      <button type="button" data-clip="onomatopoeia-sentence">Onomatopoeia sentence</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="row"><h2>This device's voice</h2><span class="tag">What your own words use today</span></div>
+    <div class="row">
+      <select id="d-voice"></select>
+      <button class="play" id="d-play" type="button">Play</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Even more realistic, but too big for a phone</h2>
+    <p class="muted">These need a strong computer, so they can't run inside WordWise. Their free online demos let you type a line and listen. They can be slow or busy, and some may ask you to wait in a queue.</p>
+    <ul>
+      <li><a href="https://huggingface.co/spaces/ResembleAI/Chatterbox" target="_blank" rel="noopener">Chatterbox</a>: very natural, and can copy a voice from a short recording.</li>
+      <li><a href="https://huggingface.co/spaces/mrfakename/E2-F5-TTS" target="_blank" rel="noopener">F5-TTS</a>: copies the voice and accent of a sample clip.</li>
+      <li><a href="https://huggingface.co/spaces/coqui/xtts" target="_blank" rel="noopener">XTTS</a>: older, many languages.</li>
+      <li><a href="https://huggingface.co/spaces/hexgrad/Kokoro-TTS" target="_blank" rel="noopener">Kokoro's own demo</a>: the same voices as above, made on a fast server.</li>
+      <li><a href="https://rhasspy.github.io/piper-samples/" target="_blank" rel="noopener">Piper samples</a>: a short recording of every Piper voice.</li>
+    </ul>
+  </section>
+</main>
+
+<script type="module">
+const $ = s => document.querySelector(s);
+const text = () => $('#text').value.trim();
+const player = new Audio();
+
+function play(src) {
+  player.pause();
+  player.src = src;
+  player.play().catch(() => {});
+}
+
+function status(id, msg, err) {
+  const el = $(id);
+  el.textContent = msg;
+  el.classList.toggle('err', Boolean(err));
+}
+
+$('#presets').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (b) $('#text').value = b.textContent;
+});
+
+/* Kokoro runs in a worker so the page keeps responding while it works. */
+const kokoroWorker = new Worker(URL.createObjectURL(new Blob([`
+  let tts;
+  self.onmessage = async ({ data }) => {
+    try {
+      if (!tts) {
+        const { KokoroTTS } = await import('https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/+esm');
+        tts = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', {
+          dtype: 'q8', device: 'wasm',
+          progress_callback: p => { if (p.status === 'progress' && p.total > 1e6) self.postMessage({ progress: p.loaded / p.total }); },
+        });
+        self.postMessage({ ready: true });
+      }
+      const t = performance.now();
+      const audio = await tts.generate(data.text, { voice: data.voice });
+      self.postMessage({ wav: audio.toBlob(), ms: performance.now() - t });
+    } catch (e) {
+      self.postMessage({ error: String(e && e.message || e) });
+    }
+  };
+`], { type: 'text/javascript' })), { type: 'module' });
+
+let kokoroBusy = false;
+kokoroWorker.onmessage = ({ data }) => {
+  if (data.progress !== undefined) {
+    $('#k-bar').style.width = `${Math.round(data.progress * 100)}%`;
+    status('#k-status', `Downloading the voice, ${Math.round(data.progress * 100)}%`);
+  } else if (data.ready) {
+    $('#k-bar').style.width = '100%';
+    status('#k-status', 'Voice ready. Making the audio…');
+  } else {
+    kokoroBusy = false;
+    $('#k-play').disabled = false;
+    if (data.error) return status('#k-status', `Kokoro didn't work here: ${data.error}`, true);
+    status('#k-status', `Made in ${(data.ms / 1000).toFixed(1)} s on this device.`);
+    play(URL.createObjectURL(data.wav));
+  }
+};
+
+$('#k-play').addEventListener('click', () => {
+  if (kokoroBusy || !text()) return;
+  kokoroBusy = true;
+  $('#k-play').disabled = true;
+  status('#k-status', 'Starting…');
+  kokoroWorker.postMessage({ text: text(), voice: $('#k-voice').value });
+});
+
+/* Piper */
+let piper;
+$('#p-play').addEventListener('click', async () => {
+  if (!text()) return;
+  const btn = $('#p-play');
+  btn.disabled = true;
+  status('#p-status', 'Starting…');
+  try {
+    piper ||= await import('https://cdn.jsdelivr.net/npm/@mintplex-labs/piper-tts-web@1.0.4/+esm');
+    const voiceId = $('#p-voice').value;
+    const t = performance.now();
+    let downloading = false;
+    const wav = await piper.predict({ text: text(), voiceId }, p => {
+      if (!p.total) return;
+      downloading = true;
+      $('#p-bar').style.width = `${Math.round((p.loaded / p.total) * 100)}%`;
+      status('#p-status', `Downloading the voice, ${Math.round((p.loaded / p.total) * 100)}%`);
+    });
+    $('#p-bar').style.width = '100%';
+    const secs = ((performance.now() - t) / 1000).toFixed(1);
+    status('#p-status', downloading ? `Downloaded and made in ${secs} s. Press Play again to see how fast it is now.` : `Made in ${secs} s on this device.`);
+    play(URL.createObjectURL(wav));
+  } catch (e) {
+    status('#p-status', `Piper didn't work here: ${e && e.message || e}`, true);
+  }
+  btn.disabled = false;
+});
+
+/* Sonia recordings */
+document.querySelectorAll('[data-clip]').forEach(b => b.addEventListener('click', () => play(`audio/${b.dataset.clip}.mp3?v=2`)));
+
+/* Device voice */
+function loadVoices() {
+  const voices = speechSynthesis.getVoices().filter(v => v.lang.startsWith('en'));
+  $('#d-voice').innerHTML = voices.map(v => `<option value="${v.name}">${v.name} (${v.lang})</option>`).join('');
+}
+if ('speechSynthesis' in window) {
+  loadVoices();
+  speechSynthesis.addEventListener('voiceschanged', loadVoices);
+  $('#d-play').addEventListener('click', () => {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text());
+    const v = speechSynthesis.getVoices().find(x => x.name === $('#d-voice').value);
+    if (v) { u.voice = v; u.lang = v.lang; }
+    speechSynthesis.speak(u);
+  });
+} else {
+  $('#d-play').disabled = true;
+}
+</script>
+</body>
+</html>
