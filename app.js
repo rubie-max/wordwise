@@ -1348,14 +1348,8 @@ function renderFullscreen() {
 
 $('#fs-toggle').hidden = !fullscreenSupported();
 $('#fs-toggle').addEventListener('click', () => (isFullscreen() ? exitFullscreen() : enterFullscreen()));
-['fullscreenchange', 'webkitfullscreenchange'].forEach(type => document.addEventListener(type, () => {
-  renderFullscreen();
-  const shown = store.get('fsHints', 0);
-  if (isFullscreen() && shown < 3) {
-    store.set('fsHints', shown + 1);
-    toast('Full screen on. Press back or tap the button to leave.');
-  }
-}));
+['fullscreenchange', 'webkitfullscreenchange'].forEach(type => document.addEventListener(type, renderFullscreen));
+localStorage.removeItem('fsHints');
 $('#fs-on').addEventListener('change', e => store.set('fullscreen', e.target.checked));
 
 $('#setup').addEventListener('submit', e => {
