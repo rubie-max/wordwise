@@ -1352,7 +1352,7 @@ async function examplesFor(word) {
 async function speakSentence() {
   const word = current();
   const mine = bankEntry(word)?.example;
-  if (mine) return speak(`${word}. ${mine}. ${word}.`);
+  if (mine) return speak(`${word}. ${mine.replace(/[.!?]+$/, '')}. ${word}.`);
   try {
     const examples = (await examplesFor(word)).map(d => d.example).filter(Boolean);
     const sentence = examples.find(x => x.toLowerCase().includes(word.toLowerCase())) || examples[0];
