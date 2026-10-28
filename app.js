@@ -271,19 +271,32 @@ function setSpeaking(on) {
   $('#play-cap').textContent = on ? 'Playing\u2026 tap to hear it again' : 'Tap to hear the word again';
 }
 
-function speak(text, rate = +$('#rate').value) {
-  if (!canSpeak || !text) return;
+// Phone browsers can drop new speech, or replay the old speech, when it starts the moment
+// the old speech is stopped. Waiting a beat after stopping avoids that.
+function utter(text, rate, id) {
+  const busy = speechSynthesis.speaking || speechSynthesis.pending;
   speechSynthesis.cancel();
-  const id = ++speakId;
   const u = new SpeechSynthesisUtterance(text);
   const voice = voices.find(v => v.name === $('#voice').value);
   if (voice) u.voice = voice;
   u.lang = voice ? voice.lang : 'en-US';
   u.rate = rate;
+  utter.last = u;
+  const go = () => { if (id === speakId) speechSynthesis.speak(u); };
+  if (busy) setTimeout(go, 150);
+  else go();
+  return u;
+}
+
+function speak(text, rate = +$('#rate').value) {
+  if (!canSpeak || !text) return;
+  const id = ++speakId;
+  const u = utter(text, rate, id);
   u.onstart = () => setSpeaking(true);
   u.onend = u.onerror = () => { if (id === speakId) setSpeaking(false); };
-  speechSynthesis.speak(u);
 }
+
+const slowRate = () => Math.max(0.3, +$('#rate').value * 0.5);
 
 const spellOut = word => speak(word.toUpperCase().split('').join(', '), 0.7);
 
@@ -371,15 +384,8 @@ const KEY_NAMES = { ' ': 'space', "'": 'apostrophe', '-': 'dash' };
 
 function sayKey(key) {
   if (!canSpeak) return;
-  speechSynthesis.cancel();
-  speakId++;
   setSpeaking(false);
-  const u = new SpeechSynthesisUtterance(KEY_NAMES[key] || key.toUpperCase());
-  const voice = voices.find(v => v.name === $('#voice').value);
-  if (voice) u.voice = voice;
-  u.lang = voice ? voice.lang : 'en-US';
-  u.rate = 1.2;
-  speechSynthesis.speak(u);
+  utter(KEY_NAMES[key] || key.toUpperCase(), 1.2, ++speakId);
 }
 
 function keyFeedback(key) {
@@ -1486,7 +1492,7 @@ async function speakMeaning() {
 
 $('#play').addEventListener('click', () => speak(current()));
 $('#play-mini').addEventListener('click', () => speak(current()));
-$('#play-slow').addEventListener('click', () => speak(current(), 0.55));
+$('#play-slow').addEventListener('click', () => speak(current(), slowRate()));
 $('#play-sentence').addEventListener('click', speakSentence);
 $('#play-meaning').addEventListener('click', speakMeaning);
 
