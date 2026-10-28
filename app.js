@@ -389,14 +389,23 @@ const KEY_NAMES = { ' ': 'space', "'": 'apostrophe', '-': 'dash' };
 
 // Letters queue up behind each other, so fast typing still says every letter.
 // Only the first letter after a word or meaning stops what is being spoken.
-const letterRun = { id: -1, starting: false, waiting: [] };
+// Letters speed up while a backlog builds, so fast typing doesn't fall far behind.
+const letterRun = { id: -1, starting: false, waiting: [], queued: 0 };
+
+function queueLetter(text) {
+  const u = makeUtterance(text, Math.min(2.2, 1.4 + 0.3 * letterRun.queued));
+  letterRun.queued++;
+  const run = letterRun.id;
+  u.onend = u.onerror = () => { if (run === letterRun.id) letterRun.queued = Math.max(0, letterRun.queued - 1); };
+  speechSynthesis.speak(u);
+}
 
 function sayKey(key) {
   if (!canSpeak) return;
   const text = KEY_NAMES[key] || key.toUpperCase();
   if (letterRun.id === speakId) {
     if (letterRun.starting) letterRun.waiting.push(text);
-    else speechSynthesis.speak(makeUtterance(text, 1.4));
+    else queueLetter(text);
     return;
   }
   setSpeaking(false);
@@ -405,10 +414,11 @@ function sayKey(key) {
   speechSynthesis.cancel();
   letterRun.starting = true;
   letterRun.waiting = [text];
+  letterRun.queued = 0;
   const go = () => {
     letterRun.starting = false;
     const texts = letterRun.waiting.splice(0);
-    if (id === speakId) texts.forEach(t => speechSynthesis.speak(makeUtterance(t, 1.4)));
+    if (id === speakId) texts.forEach(queueLetter);
   };
   if (busy) setTimeout(go, 150);
   else go();
