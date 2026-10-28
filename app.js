@@ -298,6 +298,7 @@ function utter(text, rate, id, pause = 150) {
 
 function speak(text, rate = +$('#rate').value) {
   if (!canSpeak || !text) return;
+  stopLetters();
   const id = ++speakId;
   const u = utter(text, rate, id);
   u.onstart = () => setSpeaking(true);
@@ -308,7 +309,25 @@ const slowRate = () => Math.max(0.3, +$('#rate').value * 0.5);
 
 // Spelling follows your speed setting, a touch slower so each letter stands apart.
 const spellRate = () => +$('#rate').value * 0.95;
-const spellOut = word => speak(word.toUpperCase().split('').join(', '), spellRate());
+
+function stopSpeech() {
+  if (!canSpeak || !(speechSynthesis.speaking || speechSynthesis.pending)) return;
+  speakId++;
+  setSpeaking(false);
+  speechSynthesis.cancel();
+}
+
+// Uses the recorded letters when they're loaded, and the speech voice until then.
+function spellOut(text) {
+  loadLetterClips();
+  if (playLetters(text, spellRate())) {
+    stopSpeech();
+    return;
+  }
+  if (!canSpeak) return;
+  setSpeaking(false);
+  utter([...text].map(c => KEY_NAMES[c] || c.toUpperCase()).join(', '), spellRate(), ++speakId);
+}
 
 $('#voice-test').addEventListener('click', () => speak('Necessary. This is how your dictation will sound.'));
 
@@ -405,56 +424,80 @@ function letterBusy() {
   return !letterVoice.startedAt || now - letterVoice.startedAt < letterVoice.ms;
 }
 
-// Recorded letter names in one file (made with Windows' Zira voice, letter-spelling mode),
+// Recorded letter names in one file (Microsoft's Sonia neural voice, British English),
 // as [start, length] in seconds. Clips play instantly, so fast typing hears every letter.
 const LETTER_CLIPS = {
-  a: [0, 0.2404], b: [0.3004, 0.2551], c: [0.6155, 0.3479], d: [1.0234, 0.2728], e: [1.3561, 0.2391],
-  f: [1.6552, 0.4004], g: [2.1156, 0.3259], h: [2.5015, 0.3974], i: [2.9589, 0.2442], j: [3.2631, 0.3768],
-  k: [3.6999, 0.334], l: [4.0939, 0.3482], m: [4.5022, 0.3718], n: [4.934, 0.3792], o: [5.3732, 0.2443],
-  p: [5.6775, 0.2981], q: [6.0356, 0.3698], r: [6.4654, 0.3518], s: [6.8771, 0.4045], t: [7.3416, 0.3182],
-  u: [7.7198, 0.3081], v: [8.0879, 0.2801], w: [8.428, 0.5334], x: [9.0214, 0.4539], y: [9.5353, 0.2962],
-  z: [9.8915, 0.3271], space: [10.2786, 0.6272], apostrophe: [10.9658, 0.7964], dash: [11.8222, 0.4404],
+  a: [0, 0.386], b: [0.446, 0.3901], c: [0.896, 0.4856], d: [1.4416, 0.4061], e: [1.9077, 0.3925],
+  f: [2.3602, 0.4176], g: [2.8378, 0.4189], h: [3.3167, 0.4642], i: [3.8409, 0.4124], j: [4.3133, 0.4412],
+  k: [4.8145, 0.425], l: [5.2995, 0.3787], m: [5.7382, 0.3574], n: [6.1556, 0.3711], o: [6.5867, 0.4263],
+  p: [7.0729, 0.4034], q: [7.5363, 0.4518], r: [8.0481, 0.4489], s: [8.557, 0.4309], t: [9.0479, 0.4108],
+  u: [9.5187, 0.4073], v: [9.986, 0.428], w: [10.474, 0.6525], x: [11.1866, 0.5197], y: [11.7663, 0.4791],
+  z: [12.3054, 0.5085], space: [12.8739, 0.6561], apostrophe: [13.59, 0.9118], dash: [14.5617, 0.4034],
 };
-const letterAudio = { buffer: null, loading: null, playing: null };
+const letterAudio = { buffer: null, loading: null, playing: [] };
+const clipName = c => KEY_NAMES[c] || c.toLowerCase();
 
 function loadLetterClips() {
   const ctx = audioCtx();
   if (!ctx || letterAudio.loading) return;
-  letterAudio.loading = fetch('letters.wav?v=1')
+  letterAudio.loading = fetch('letters.wav?v=2')
     .then(r => (r.ok ? r.arrayBuffer() : Promise.reject()))
     .then(data => new Promise((resolve, reject) => ctx.decodeAudioData(data, resolve, reject)))
     .then(buffer => { letterAudio.buffer = buffer; })
     .catch(() => { letterAudio.loading = null; });
 }
+document.addEventListener('pointerdown', () => loadLetterClips(), { once: true, capture: true });
 
-function playLetterClip(key) {
-  const clip = LETTER_CLIPS[KEY_NAMES[key] || key];
-  const ctx = audioCtx();
-  if (!clip || !ctx || !letterAudio.buffer) return false;
-  const now = ctx.currentTime;
-  const prev = letterAudio.playing;
-  if (prev) {
-    prev.gain.gain.setTargetAtTime(0, now, 0.01);
-    prev.src.stop(now + 0.05);
-  }
+function playClip(name, when) {
+  const ctx = sfx.ctx;
+  const clip = LETTER_CLIPS[name];
   const src = ctx.createBufferSource();
   const gain = ctx.createGain();
   src.buffer = letterAudio.buffer;
   gain.gain.value = 0.9;
   src.connect(gain).connect(ctx.destination);
-  src.start(now, clip[0], clip[1]);
-  letterAudio.playing = { src, gain };
+  src.start(when, clip[0], clip[1]);
+  const item = { src, gain };
+  letterAudio.playing.push(item);
+  src.onended = () => { letterAudio.playing = letterAudio.playing.filter(p => p !== item); };
+  return clip[1];
+}
+
+function stopLetters() {
+  if (!letterAudio.playing.length) return;
+  const now = sfx.ctx.currentTime;
+  for (const { src, gain } of letterAudio.playing) {
+    gain.gain.setTargetAtTime(0, now, 0.01);
+    try { src.stop(now + 0.05); } catch {}
+  }
+  letterAudio.playing = [];
+}
+
+function playLetterClip(key) {
+  const name = clipName(key);
+  const ctx = audioCtx();
+  if (!LETTER_CLIPS[name] || !ctx || !letterAudio.buffer) return false;
+  stopLetters();
+  playClip(name, ctx.currentTime);
+  return true;
+}
+
+// Plays the letters one after another, closer together at faster speeds.
+function playLetters(text, rate) {
+  const names = [...text].map(clipName);
+  const ctx = audioCtx();
+  if (!names.length || !names.every(n => LETTER_CLIPS[n]) || !ctx || !letterAudio.buffer) return false;
+  stopLetters();
+  const gap = 0.2 / rate;
+  let at = ctx.currentTime + 0.05;
+  for (const name of names) at += playClip(name, at) + gap;
   return true;
 }
 
 function sayKey(key) {
   if (playLetterClip(key)) {
     // The first letter typed stops a word or meaning that is still being read out.
-    if (canSpeak && (speechSynthesis.speaking || speechSynthesis.pending)) {
-      speakId++;
-      setSpeaking(false);
-      speechSynthesis.cancel();
-    }
+    stopSpeech();
     return;
   }
   loadLetterClips();
@@ -1524,9 +1567,7 @@ $('#check').addEventListener('click', checkAnswer);
 // Reads back what you typed, letter by letter, without lighting up the Again button.
 $('#read-typed').addEventListener('mousedown', e => e.preventDefault());
 $('#read-typed').addEventListener('click', () => {
-  if (!canSpeak || !session.typed) return;
-  setSpeaking(false);
-  utter([...session.typed].map(c => KEY_NAMES[c] || c.toUpperCase()).join(', '), spellRate(), ++speakId);
+  if (session.typed) spellOut(session.typed);
 });
 
 // A physical keyboard (computer or tablet) types into the same tiles.
@@ -1843,6 +1884,7 @@ $('#quit').addEventListener('click', () => {
 
 function showSetup() {
   if (canSpeak) speechSynthesis.cancel();
+  stopLetters();
   closeSheet();
   renderHome();
   openPlay(null);
@@ -1857,6 +1899,7 @@ function summaryRow(cls, word, note) {
 
 function finish() {
   if (canSpeak) speechSynthesis.cancel();
+  stopLetters();
   closeSheet();
   const { results } = session;
   const score = results.filter(r => r.correct).length;
