@@ -172,6 +172,15 @@ function renderSettings() {
   $('#sfx-on').checked = prefs.sfx;
   $('#buzz-on').checked = prefs.buzz;
   renderPills('#key-pills', 'keyMode', prefs.keyMode);
+
+  const canFull = fullscreenSupported();
+  const homeScreen = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  $('#fs-on').checked = canFull && store.get('fullscreen', true);
+  $('#fs-on').disabled = !canFull;
+  $('#fs-sub').textContent = canFull ? 'Hides the browser bars when a dictation starts, and brings them back when it ends.'
+    : homeScreen ? 'Not needed: WordWise is open from your Home Screen, so there are no browser bars.'
+    : 'Not available in this browser';
+  $('#fs-tip').hidden = canFull || homeScreen;
 }
 
 $('#sfx-on').addEventListener('change', e => {
@@ -1244,6 +1253,7 @@ function openPlay(id) {
   $('#summary').hidden = id !== 'summary';
   document.body.classList.toggle('in-play', Boolean(id));
   closePopovers();
+  if (!id) exitFullscreen();
 }
 
 const setState = state => { $('#session').dataset.state = state; };
@@ -1252,9 +1262,59 @@ function startSession(words, label) {
   Object.assign(session, { words, index: 0, results: [], label, started: Date.now() });
   $('#session-list').textContent = label;
   openPlay('session');
+  if (store.get('fullscreen', true)) enterFullscreen();
   sound('start');
   showWord();
 }
+
+/* ---------- Full screen ---------- */
+
+// iPhone Safari only allows full screen for videos, so these report false there.
+function fullscreenSupported() {
+  return Boolean(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+}
+
+function isFullscreen() {
+  return Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+}
+
+function enterFullscreen() {
+  if (!fullscreenSupported() || isFullscreen()) return;
+  const root = document.documentElement;
+  try {
+    const req = root.requestFullscreen ? root.requestFullscreen({ navigationUI: 'hide' }) : root.webkitRequestFullscreen();
+    req?.catch?.(() => {});
+  } catch {}
+}
+
+function exitFullscreen() {
+  if (!isFullscreen()) return;
+  try {
+    const req = document.exitFullscreen ? document.exitFullscreen() : document.webkitExitFullscreen();
+    req?.catch?.(() => {});
+  } catch {}
+}
+
+function renderFullscreen() {
+  const on = isFullscreen();
+  const b = $('#fs-toggle');
+  b.classList.toggle('on', on);
+  b.setAttribute('aria-pressed', String(on));
+  b.setAttribute('aria-label', on ? 'Exit full screen' : 'Full screen');
+  b.title = on ? 'Exit full screen' : 'Full screen';
+}
+
+$('#fs-toggle').hidden = !fullscreenSupported();
+$('#fs-toggle').addEventListener('click', () => (isFullscreen() ? exitFullscreen() : enterFullscreen()));
+['fullscreenchange', 'webkitfullscreenchange'].forEach(type => document.addEventListener(type, () => {
+  renderFullscreen();
+  const shown = store.get('fsHints', 0);
+  if (isFullscreen() && shown < 3) {
+    store.set('fsHints', shown + 1);
+    toast('Full screen on. Press back or tap the button to leave.');
+  }
+}));
+$('#fs-on').addEventListener('change', e => store.set('fullscreen', e.target.checked));
 
 $('#setup').addEventListener('submit', e => {
   e.preventDefault();

@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap">
-  <link rel="stylesheet" href="styles.css?v=21">
+  <link rel="stylesheet" href="styles.css?v=22">
 </head>
 <body class="locked">
   <div id="gate" class="gate">
@@ -361,6 +361,20 @@
       <div class="settings-grid">
         <div class="card">
           <div class="card-head">
+            <h2>Practice screen</h2>
+            <p class="muted small">How a dictation fills your screen.</p>
+          </div>
+          <div class="toggles">
+            <label class="switch">
+              <input id="fs-on" type="checkbox">
+              <span class="track" aria-hidden="true"></span>
+              <span>Full screen when practising<small id="fs-sub">Hides the browser bars when a dictation starts, and brings them back when it ends.</small></span>
+            </label>
+          </div>
+          <p id="fs-tip" class="fs-tip" hidden>This browser doesn't let websites go full screen. On iPhone, tap <b>Share</b>, then <b>Add to Home Screen</b>, and open WordWise from that icon instead.</p>
+        </div>
+        <div class="card">
+          <div class="card-head">
             <h2>Voice</h2>
             <p class="muted small">Who reads the words aloud, and how fast.</p>
           </div>
@@ -452,10 +466,16 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
         </button>
         <div class="play-title"><b id="progress-text"></b><span id="session-list"></span></div>
+        <div class="play-right">
+        <button id="fs-toggle" class="icon-btn fs-btn" type="button" aria-label="Full screen" title="Full screen" aria-pressed="false" hidden>
+          <svg class="fs-in" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+          <svg class="fs-out" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3"/></svg>
+        </button>
         <div class="voice-menu play-voice">
           <button id="session-voice" class="icon-btn" type="button" aria-label="Voice settings" aria-expanded="false" title="Voice settings">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
           </button>
+        </div>
         </div>
       </div>
       <div id="segs" class="segs"></div>
@@ -632,7 +652,7 @@
     Definitions from the <a href="https://dictionaryapi.dev/" target="_blank" rel="noopener">Free Dictionary API</a>. Progress is saved only in this browser.
   </footer>
 
-  <script src="words.js?v=21"></script>
-  <script src="app.js?v=21"></script>
+  <script src="words.js?v=22"></script>
+  <script src="app.js?v=22"></script>
 </body>
 </html>
