@@ -792,8 +792,6 @@ body.in-play { overflow: hidden; --nav-h: 0px; }
 .play-title { min-width: 0; text-align: center; line-height: 1.2; }
 .play-title b { display: block; font-size: 15px; font-weight: 600; }
 .play-title span { display: block; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.play:not([data-state="listen"]) .play-voice { visibility: hidden; }
-
 .segs { display: grid; grid-template-columns: repeat(var(--n, 10), 1fr); gap: 4px; margin-top: 14px; flex: none; }
 .segs.dense { gap: 2px; }
 .segs i { height: 5px; border-radius: 9px; background: var(--surface); transition: background .25s; }
@@ -998,7 +996,8 @@ body.in-play { overflow: hidden; --nav-h: 0px; }
 .res-foot { flex: none; padding-top: 10px; }
 .res-foot .cap { text-align: center; margin-top: 8px; }
 /* Centres the Correct screen while still letting a long entry scroll from the top. */
-.res-ok .res-body { align-items: center; text-align: center; }
+/* The top padding leaves room for the badge's glow and sparks, which the scroll area would clip. */
+.res-ok .res-body { align-items: center; text-align: center; padding-top: 38px; }
 .res-ok .res-body > :first-child { margin-top: auto; }
 .res-ok .res-body > :last-child { margin-bottom: auto; }
 .badge-wrap { position: relative; flex: none; display: grid; place-items: center; }
