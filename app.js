@@ -286,6 +286,7 @@ function makeUtterance(text, rate) {
 }
 
 function utter(text, rate, id, pause = 150) {
+  stopVoice();
   const busy = speechSynthesis.speaking || speechSynthesis.pending;
   speechSynthesis.cancel();
   const u = makeUtterance(text, rate);
@@ -296,25 +297,75 @@ function utter(text, rate, id, pause = 150) {
   return u;
 }
 
-function speak(text, rate = +$('#rate').value) {
-  if (!canSpeak || !text) return;
-  stopLetters();
-  const id = ++speakId;
+// The built-in words, their sentences and their meanings are recorded with Microsoft's Sonia
+// neural voice. Anything else, like your own words, is read by the device's speech voice.
+const RECORDINGS = new Map();
+for (const [key, [meaning, example]] of Object.entries(WORD_INFO)) {
+  RECORDINGS.set(key, key).set(meaning, `${key}-meaning`).set(example, `${key}-sentence`);
+}
+const recordingFor = text => RECORDINGS.get(text.replace(/^"|"$/g, '')) || RECORDINGS.get(text.toLowerCase()) || '';
+
+const voiceAudio = new Audio();
+voiceAudio.preservesPitch = true;
+const recordingUrls = new Map();
+
+// Fetched whole rather than streamed, so the service worker can keep them for offline use.
+function fetchRecording(name) {
+  if (!recordingUrls.has(name)) {
+    const url = fetch(`audio/${name}.mp3?v=1`)
+      .then(r => (r.ok ? r.blob() : Promise.reject(new Error(r.status))))
+      .then(blob => URL.createObjectURL(blob));
+    url.catch(() => recordingUrls.delete(name));
+    recordingUrls.set(name, url);
+  }
+  return recordingUrls.get(name);
+}
+
+function stopVoice() {
+  if (!voiceAudio.paused) voiceAudio.pause();
+}
+
+function playRecording(name, text, rate, id) {
+  fetchRecording(name)
+    .then(url => {
+      if (id !== speakId) return;
+      voiceAudio.src = url;
+      voiceAudio.defaultPlaybackRate = voiceAudio.playbackRate = Math.min(2, Math.max(0.5, +$('#rate').value / 0.9));
+      voiceAudio.onplaying = () => { if (id === speakId) setSpeaking(true); };
+      voiceAudio.onended = voiceAudio.onpause = () => { if (id === speakId) setSpeaking(false); };
+      return voiceAudio.play();
+    })
+    .catch(() => { if (id === speakId && canSpeak) speakDevice(text, rate, id); });
+}
+
+function speakDevice(text, rate, id) {
   const u = utter(text, rate, id);
   u.onstart = () => setSpeaking(true);
   u.onend = u.onerror = () => { if (id === speakId) setSpeaking(false); };
 }
 
+function speak(text, rate = +$('#rate').value, recording = recordingFor(text)) {
+  if (!text) return;
+  stopLetters();
+  stopVoice();
+  const id = ++speakId;
+  if (recording) {
+    if (canSpeak && (speechSynthesis.speaking || speechSynthesis.pending)) speechSynthesis.cancel();
+    playRecording(recording, text, rate, id);
+  } else if (canSpeak) speakDevice(text, rate, id);
+}
+
 const slowRate = () => Math.max(0.3, +$('#rate').value * 0.5);
+const speakSlow = word => speak(word, slowRate(), recordingFor(word) && `${recordingFor(word)}-slow`);
 
 // Spelling follows your speed setting, a touch slower so each letter stands apart.
 const spellRate = () => +$('#rate').value * 0.95;
 
 function stopSpeech() {
-  if (!canSpeak || !(speechSynthesis.speaking || speechSynthesis.pending)) return;
   speakId++;
   setSpeaking(false);
-  speechSynthesis.cancel();
+  stopVoice();
+  if (canSpeak && (speechSynthesis.speaking || speechSynthesis.pending)) speechSynthesis.cancel();
 }
 
 // Uses the recorded letters when they're loaded, and the speech voice until then.
@@ -446,7 +497,14 @@ function loadLetterClips() {
     .then(buffer => { letterAudio.buffer = buffer; })
     .catch(() => { letterAudio.loading = null; });
 }
-document.addEventListener('pointerdown', () => loadLetterClips(), { once: true, capture: true });
+// iPhones only let audio start without a tap once it has played during a tap, so the first tap
+// plays a silent clip. After that the words can play when they come up.
+document.addEventListener('pointerdown', () => {
+  loadLetterClips();
+  if (voiceAudio.src) return;
+  voiceAudio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+  voiceAudio.play().catch(() => {});
+}, { once: true, capture: true });
 
 function playClip(name, when) {
   const ctx = sfx.ctx;
@@ -787,6 +845,14 @@ if (!Array.isArray(bank)) {
 }
 const saveBank = () => store.set('wordBank', bank);
 const bankEntry = word => bank.find(b => bankKey(b.word) === bankKey(word));
+
+// Your own meaning and sentence win; built-in words fall back to the ones that come with the app.
+function wordInfo(word) {
+  const mine = bankEntry(word);
+  const built = WORD_INFO[word.toLowerCase()];
+  if (mine?.meaning || mine?.example || !built) return mine;
+  return { meaning: built[0], example: built[1] };
+}
 
 function listLabel(key) {
   if (key === 'mistakes') return 'My mistakes';
@@ -1505,11 +1571,12 @@ function showWord() {
   updateHints(word);
   const upcoming = session.words[session.index + 1];
   if (upcoming) lookup(upcoming).catch(() => {});
+  if (upcoming && recordingFor(upcoming)) fetchRecording(recordingFor(upcoming)).catch(() => {});
 }
 
 // Sentence and Meaning only show when there is something for them to read.
 async function updateHints(word) {
-  const mine = bankEntry(word);
+  const mine = wordInfo(word);
   const show = (meaning, example) => {
     if (current() !== word) return;
     $('#play-meaning').hidden = !meaning;
@@ -1594,28 +1661,25 @@ async function examplesFor(word) {
 
 async function speakSentence() {
   const word = current();
-  const mine = bankEntry(word)?.example;
-  if (mine) return speak(`${word}. ${mine.replace(/[.!?]+$/, '')}. ${word}.`);
+  const mine = wordInfo(word)?.example;
+  if (mine) return speak(mine);
   try {
     const examples = (await examplesFor(word)).map(d => d.example).filter(Boolean);
     const sentence = examples.find(x => x.toLowerCase().includes(word.toLowerCase())) || examples[0];
-    if (sentence) speak(`${word}. ${sentence}. ${word}.`);
-    else {
-      speak(word);
-      toast('No example sentence is available for this word.');
-    }
+    if (sentence) speak(sentence);
+    else toast('No example sentence is available for this word.');
   } catch {
-    speak(word);
+    toast('Could not load an example sentence.');
   }
 }
 
 async function speakMeaning() {
   const word = current();
-  const mine = bankEntry(word)?.meaning;
-  if (mine) return speak(`It means: ${mine}`);
+  const mine = wordInfo(word)?.meaning;
+  if (mine) return speak(mine);
   try {
     const defs = await examplesFor(word);
-    if (defs.length) speak(`It means: ${defs[0].definition}`);
+    if (defs.length) speak(defs[0].definition);
     else toast('No meaning is available for this word.');
   } catch {
     toast('Could not load the meaning.');
@@ -1624,7 +1688,7 @@ async function speakMeaning() {
 
 $('#play').addEventListener('click', () => speak(current()));
 $('#play-mini').addEventListener('click', () => speak(current()));
-$('#play-slow').addEventListener('click', () => speak(current(), slowRate()));
+$('#play-slow').addEventListener('click', () => speakSlow(current()));
 $('#play-sentence').addEventListener('click', speakSentence);
 $('#play-meaning').addEventListener('click', speakMeaning);
 
@@ -1797,7 +1861,7 @@ function showWrong(word, typed) {
 function fillResult(word, entries, correct, failed) {
   const facts = entryFacts(entries);
   const { phonetic, similar } = facts;
-  const mine = bankEntry(word);
+  const mine = wordInfo(word);
   // A saved meaning wins, and the dictionary's part of speech may not match it.
   const def = mine?.meaning || facts.def;
   const example = mine?.example || (mine?.meaning ? '' : facts.example);
@@ -1885,6 +1949,7 @@ $('#quit').addEventListener('click', () => {
 function showSetup() {
   if (canSpeak) speechSynthesis.cancel();
   stopLetters();
+  stopVoice();
   closeSheet();
   renderHome();
   openPlay(null);
@@ -1900,6 +1965,7 @@ function summaryRow(cls, word, note) {
 function finish() {
   if (canSpeak) speechSynthesis.cancel();
   stopLetters();
+  stopVoice();
   closeSheet();
   const { results } = session;
   const score = results.filter(r => r.correct).length;
