@@ -305,7 +305,9 @@ function speak(text, rate = +$('#rate').value) {
 
 const slowRate = () => Math.max(0.3, +$('#rate').value * 0.5);
 
-const spellOut = word => speak(word.toUpperCase().split('').join(', '), 0.7);
+// Spelling follows your speed setting, a touch slower so each letter stands apart.
+const spellRate = () => +$('#rate').value * 0.95;
+const spellOut = word => speak(word.toUpperCase().split('').join(', '), spellRate());
 
 $('#voice-test').addEventListener('click', () => speak('Necessary. This is how your dictation will sound.'));
 
@@ -389,41 +391,31 @@ function buzz(pattern) {
 
 const KEY_NAMES = { ' ': 'space', "'": 'apostrophe', '-': 'dash' };
 
-// Letters queue up behind each other, so fast typing still says every letter.
-// Only the first letter after a word or meaning stops what is being spoken.
-// Letters speed up while a backlog builds, so fast typing doesn't fall far behind.
-const letterRun = { id: -1, starting: false, waiting: [], queued: 0 };
+// Voices pad each letter with up to a second of silence, so queueing every letter falls far
+// behind fast typing. Instead a new key cuts off the last letter once its sound has played,
+// and clicks if the last letter has only just started. This never falls behind.
+const letterVoice = { id: -1, queuedAt: 0, startedAt: 0, ms: 0 };
 
-function queueLetter(text) {
-  const u = makeUtterance(text, Math.min(2.2, 1.4 + 0.3 * letterRun.queued));
-  letterRun.queued++;
-  const run = letterRun.id;
-  u.onend = u.onerror = () => { if (run === letterRun.id) letterRun.queued = Math.max(0, letterRun.queued - 1); };
-  speechSynthesis.speak(u);
+function letterBusy() {
+  if (letterVoice.id !== speakId) return false;
+  const now = performance.now();
+  if (now - letterVoice.queuedAt > 1500) return false;
+  return !letterVoice.startedAt || now - letterVoice.startedAt < letterVoice.ms;
 }
 
 function sayKey(key) {
   if (!canSpeak) return;
-  const text = KEY_NAMES[key] || key.toUpperCase();
-  if (letterRun.id === speakId) {
-    if (letterRun.starting) letterRun.waiting.push(text);
-    else queueLetter(text);
+  if (letterBusy()) {
+    keyClick(1900);
     return;
   }
   setSpeaking(false);
-  const id = letterRun.id = ++speakId;
-  const busy = speechSynthesis.speaking || speechSynthesis.pending;
-  speechSynthesis.cancel();
-  letterRun.starting = true;
-  letterRun.waiting = [text];
-  letterRun.queued = 0;
-  const go = () => {
-    letterRun.starting = false;
-    const texts = letterRun.waiting.splice(0);
-    if (id === speakId) texts.forEach(queueLetter);
-  };
-  if (busy) setTimeout(go, 150);
-  else go();
+  const id = ++speakId;
+  const name = KEY_NAMES[key];
+  Object.assign(letterVoice, { id, queuedAt: performance.now(), startedAt: 0, ms: name || key === 'w' ? 650 : 400 });
+  const u = utter(name || key.toUpperCase(), 1.3, id);
+  u.onstart = () => { if (letterVoice.id === id) letterVoice.startedAt = performance.now(); };
+  u.onend = u.onerror = () => { if (letterVoice.id === id) letterVoice.id = -1; };
 }
 
 function keyFeedback(key) {
@@ -1479,7 +1471,7 @@ $('#read-typed').addEventListener('mousedown', e => e.preventDefault());
 $('#read-typed').addEventListener('click', () => {
   if (!canSpeak || !session.typed) return;
   setSpeaking(false);
-  utter([...session.typed].map(c => KEY_NAMES[c] || c.toUpperCase()).join(', '), 0.85, ++speakId);
+  utter([...session.typed].map(c => KEY_NAMES[c] || c.toUpperCase()).join(', '), spellRate(), ++speakId);
 });
 
 // A physical keyboard (computer or tablet) types into the same tiles.
