@@ -1438,6 +1438,8 @@ let repeatTimer = 0;
 // Keys never take focus, so a physical Enter or Space can't re-press the last tapped key.
 $('.kb').addEventListener('mousedown', e => e.preventDefault());
 
+// Letters type the moment a finger lands. Waiting for the click loses letters when typing
+// fast with two thumbs, because the browser drops a click if another finger touched meanwhile.
 keys.addEventListener('pointerdown', e => {
   const key = e.target.closest('[data-key]');
   if (!key) return;
@@ -1445,8 +1447,10 @@ keys.addEventListener('pointerdown', e => {
   pressedKey = key;
   key.classList.add('down');
   keyFeedback(key.dataset.key);
+  typeKey(key.dataset.key);
   if (key.dataset.key === 'Backspace') {
-    typeKey('Backspace');
+    clearTimeout(repeatTimer);
+    clearInterval(repeatTimer);
     repeatTimer = setTimeout(() => { repeatTimer = setInterval(() => typeKey('Backspace'), 70); }, 450);
   }
 });
@@ -1462,8 +1466,8 @@ const releaseKey = () => {
 
 keys.addEventListener('click', e => {
   const key = e.target.closest('[data-key]');
-  // Pointer presses on Backspace are handled on pointerdown so holding it repeats.
-  if (!key || (key.dataset.key === 'Backspace' && e.detail)) return;
+  // Taps already typed on pointerdown; this only handles clicks with no pointer, like a screen reader.
+  if (!key || e.detail) return;
   typeKey(key.dataset.key);
 });
 $('#check').addEventListener('click', checkAnswer);
