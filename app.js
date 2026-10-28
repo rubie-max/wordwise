@@ -273,14 +273,19 @@ function setSpeaking(on) {
 
 // Phone browsers can drop new speech, or replay the old speech, when it starts the moment
 // the old speech is stopped. Waiting a beat after stopping avoids that.
-function utter(text, rate, id) {
-  const busy = speechSynthesis.speaking || speechSynthesis.pending;
-  speechSynthesis.cancel();
+function makeUtterance(text, rate) {
   const u = new SpeechSynthesisUtterance(text);
   const voice = voices.find(v => v.name === $('#voice').value);
   if (voice) u.voice = voice;
   u.lang = voice ? voice.lang : 'en-US';
   u.rate = rate;
+  return u;
+}
+
+function utter(text, rate, id) {
+  const busy = speechSynthesis.speaking || speechSynthesis.pending;
+  speechSynthesis.cancel();
+  const u = makeUtterance(text, rate);
   utter.last = u;
   const go = () => { if (id === speakId) speechSynthesis.speak(u); };
   if (busy) setTimeout(go, 150);
@@ -382,10 +387,31 @@ function buzz(pattern) {
 
 const KEY_NAMES = { ' ': 'space', "'": 'apostrophe', '-': 'dash' };
 
+// Letters queue up behind each other, so fast typing still says every letter.
+// Only the first letter after a word or meaning stops what is being spoken.
+const letterRun = { id: -1, starting: false, waiting: [] };
+
 function sayKey(key) {
   if (!canSpeak) return;
+  const text = KEY_NAMES[key] || key.toUpperCase();
+  if (letterRun.id === speakId) {
+    if (letterRun.starting) letterRun.waiting.push(text);
+    else speechSynthesis.speak(makeUtterance(text, 1.4));
+    return;
+  }
   setSpeaking(false);
-  utter(KEY_NAMES[key] || key.toUpperCase(), 1.2, ++speakId);
+  const id = letterRun.id = ++speakId;
+  const busy = speechSynthesis.speaking || speechSynthesis.pending;
+  speechSynthesis.cancel();
+  letterRun.starting = true;
+  letterRun.waiting = [text];
+  const go = () => {
+    letterRun.starting = false;
+    const texts = letterRun.waiting.splice(0);
+    if (id === speakId) texts.forEach(t => speechSynthesis.speak(makeUtterance(t, 1.4)));
+  };
+  if (busy) setTimeout(go, 150);
+  else go();
 }
 
 function keyFeedback(key) {
