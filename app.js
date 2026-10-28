@@ -194,6 +194,7 @@ $('#key-pills').addEventListener('click', e => {
   if (!b) return;
   store.set('keyMode', b.dataset.keyMode);
   renderPills('#key-pills', 'keyMode', b.dataset.keyMode);
+  if (b.dataset.keyMode === 'say') loadLetterClips();
   keyFeedback('a');
 });
 $('#buzz-on').addEventListener('change', e => {
@@ -404,7 +405,59 @@ function letterBusy() {
   return !letterVoice.startedAt || now - letterVoice.startedAt < letterVoice.ms;
 }
 
+// Recorded letter names in one file (made with Windows' Zira voice, letter-spelling mode),
+// as [start, length] in seconds. Clips play instantly, so fast typing hears every letter.
+const LETTER_CLIPS = {
+  a: [0, 0.2404], b: [0.3004, 0.2551], c: [0.6155, 0.3479], d: [1.0234, 0.2728], e: [1.3561, 0.2391],
+  f: [1.6552, 0.4004], g: [2.1156, 0.3259], h: [2.5015, 0.3974], i: [2.9589, 0.2442], j: [3.2631, 0.3768],
+  k: [3.6999, 0.334], l: [4.0939, 0.3482], m: [4.5022, 0.3718], n: [4.934, 0.3792], o: [5.3732, 0.2443],
+  p: [5.6775, 0.2981], q: [6.0356, 0.3698], r: [6.4654, 0.3518], s: [6.8771, 0.4045], t: [7.3416, 0.3182],
+  u: [7.7198, 0.3081], v: [8.0879, 0.2801], w: [8.428, 0.5334], x: [9.0214, 0.4539], y: [9.5353, 0.2962],
+  z: [9.8915, 0.3271], space: [10.2786, 0.6272], apostrophe: [10.9658, 0.7964], dash: [11.8222, 0.4404],
+};
+const letterAudio = { buffer: null, loading: null, playing: null };
+
+function loadLetterClips() {
+  const ctx = audioCtx();
+  if (!ctx || letterAudio.loading) return;
+  letterAudio.loading = fetch('letters.wav?v=1')
+    .then(r => (r.ok ? r.arrayBuffer() : Promise.reject()))
+    .then(data => new Promise((resolve, reject) => ctx.decodeAudioData(data, resolve, reject)))
+    .then(buffer => { letterAudio.buffer = buffer; })
+    .catch(() => { letterAudio.loading = null; });
+}
+
+function playLetterClip(key) {
+  const clip = LETTER_CLIPS[KEY_NAMES[key] || key];
+  const ctx = audioCtx();
+  if (!clip || !ctx || !letterAudio.buffer) return false;
+  const now = ctx.currentTime;
+  const prev = letterAudio.playing;
+  if (prev) {
+    prev.gain.gain.setTargetAtTime(0, now, 0.01);
+    prev.src.stop(now + 0.05);
+  }
+  const src = ctx.createBufferSource();
+  const gain = ctx.createGain();
+  src.buffer = letterAudio.buffer;
+  gain.gain.value = 0.9;
+  src.connect(gain).connect(ctx.destination);
+  src.start(now, clip[0], clip[1]);
+  letterAudio.playing = { src, gain };
+  return true;
+}
+
 function sayKey(key) {
+  if (playLetterClip(key)) {
+    // The first letter typed stops a word or meaning that is still being read out.
+    if (canSpeak && (speechSynthesis.speaking || speechSynthesis.pending)) {
+      speakId++;
+      setSpeaking(false);
+      speechSynthesis.cancel();
+    }
+    return;
+  }
+  loadLetterClips();
   if (!canSpeak) return;
   if (letterBusy()) {
     keyClick(1900);
@@ -1300,6 +1353,7 @@ function startSession(words, label) {
   $('#session-list').textContent = label;
   openPlay('session');
   if (store.get('fullscreen', true)) enterFullscreen();
+  if (soundPrefs().keyMode === 'say') loadLetterClips();
   sound('start');
   showWord();
 }
