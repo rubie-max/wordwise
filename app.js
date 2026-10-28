@@ -312,7 +312,7 @@ const recordingUrls = new Map();
 // Fetched whole rather than streamed, so the service worker can keep them for offline use.
 function fetchRecording(name) {
   if (!recordingUrls.has(name)) {
-    const url = fetch(`audio/${name}.mp3?v=1`)
+    const url = fetch(`audio/${name}.mp3?v=2`)
       .then(r => (r.ok ? r.blob() : Promise.reject(new Error(r.status))))
       .then(blob => URL.createObjectURL(blob));
     url.catch(() => recordingUrls.delete(name));
