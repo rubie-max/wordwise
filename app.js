@@ -284,13 +284,13 @@ function makeUtterance(text, rate) {
   return u;
 }
 
-function utter(text, rate, id) {
+function utter(text, rate, id, pause = 150) {
   const busy = speechSynthesis.speaking || speechSynthesis.pending;
   speechSynthesis.cancel();
   const u = makeUtterance(text, rate);
   utter.last = u;
   const go = () => { if (id === speakId) speechSynthesis.speak(u); };
-  if (busy) setTimeout(go, 150);
+  if (busy) setTimeout(go, pause);
   else go();
   return u;
 }
@@ -392,8 +392,8 @@ function buzz(pattern) {
 const KEY_NAMES = { ' ': 'space', "'": 'apostrophe', '-': 'dash' };
 
 // Voices pad each letter with up to a second of silence, so queueing every letter falls far
-// behind fast typing. Instead a new key cuts off the last letter once its sound has played,
-// and clicks if the last letter has only just started. This never falls behind.
+// behind fast typing. Instead a new key cuts off the last letter once its sound has played
+// (about 0.3 s at this rate), and clicks if the last letter has only just started.
 const letterVoice = { id: -1, queuedAt: 0, startedAt: 0, ms: 0 };
 
 function letterBusy() {
@@ -412,8 +412,8 @@ function sayKey(key) {
   setSpeaking(false);
   const id = ++speakId;
   const name = KEY_NAMES[key];
-  Object.assign(letterVoice, { id, queuedAt: performance.now(), startedAt: 0, ms: name || key === 'w' ? 650 : 400 });
-  const u = utter(name || key.toUpperCase(), 1.3, id);
+  Object.assign(letterVoice, { id, queuedAt: performance.now(), startedAt: 0, ms: name || key === 'w' ? 550 : 300 });
+  const u = utter(name || key.toUpperCase(), 1.5, id, 80);
   u.onstart = () => { if (letterVoice.id === id) letterVoice.startedAt = performance.now(); };
   u.onend = u.onerror = () => { if (letterVoice.id === id) letterVoice.id = -1; };
 }
