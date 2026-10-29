@@ -379,12 +379,16 @@ function stopSpeech() {
 }
 
 // Uses the recorded letters when they're loaded, and the speech voice until then.
-function spellOut(text) {
+// onLetter(i) is called as letter i starts, and onLetter(-1) when the spelling ends or is cut off.
+function spellOut(text, onLetter) {
   loadLetterClips();
-  if (playLetters(text, spellRate())) {
+  const starts = playLetters(text, spellRate());
+  if (starts) {
     stopSpeech();
+    if (onLetter) followLetters(starts, onLetter);
     return;
   }
+  if (onLetter) onLetter(-1);
   if (!canSpeak) return;
   setSpeaking(false);
   utter([...text].map(c => KEY_NAMES[c] || c.toUpperCase()).join(', '), spellRate(), ++speakId);
@@ -531,7 +535,26 @@ function playClip(name, when) {
   return clip[1];
 }
 
+const letterFollow = { timers: [], done: null };
+
+function stopFollowing() {
+  letterFollow.timers.forEach(clearTimeout);
+  letterFollow.timers = [];
+  const done = letterFollow.done;
+  letterFollow.done = null;
+  if (done) done(-1);
+}
+
+// Calls back in time with the letters scheduled by playLetters.
+function followLetters(starts, onLetter) {
+  const now = sfx.ctx.currentTime;
+  letterFollow.done = onLetter;
+  letterFollow.timers = starts.map((at, i) => setTimeout(() => onLetter(i), Math.max(0, (at - now) * 1000)));
+  letterFollow.timers.push(setTimeout(stopFollowing, Math.max(0, (starts.end - now) * 1000)));
+}
+
 function stopLetters() {
+  stopFollowing();
   if (!letterAudio.playing.length) return;
   const now = sfx.ctx.currentTime;
   for (const { src, gain } of letterAudio.playing) {
@@ -551,15 +574,21 @@ function playLetterClip(key) {
 }
 
 // Plays the letters one after another, closer together at faster speeds.
+// Returns each letter's start time on the audio clock, with .end for when the last one finishes.
 function playLetters(text, rate) {
   const names = [...text].map(clipName);
   const ctx = audioCtx();
   if (!names.length || !names.every(n => LETTER_CLIPS[n]) || !ctx || !letterAudio.buffer) return false;
   stopLetters();
   const gap = 0.2 / rate;
+  const starts = [];
   let at = ctx.currentTime + 0.05;
-  for (const name of names) at += playClip(name, at) + gap;
-  return true;
+  for (const name of names) {
+    starts.push(at);
+    at += playClip(name, at) + gap;
+  }
+  starts.end = at - gap;
+  return starts;
 }
 
 function sayKey(key) {
@@ -2047,45 +2076,72 @@ function alignLetters(typed, correct) {
   return ops.reverse();
 }
 
-function letterReminder(errs, word) {
+const letterLabel = c => (c === ' ' ? 'space' : c === '-' ? 'hyphen' : c);
+const shownLetter = c => (c === ' ' ? '&nbsp;' : esc(c));
+
+// One numbered fix per mistake. `cols` are the columns of the comparison it covers, and
+// `pos`/`len` the letters to underline in the right spelling.
+function fixesFor(ops, word) {
   const w = word.toLowerCase();
-  const longest = l => {
-    let best = 0;
-    let n = 0;
-    for (const c of w) {
-      n = c === l ? n + 1 : 0;
-      best = Math.max(best, n);
+  const fixes = [];
+  let j = 0;
+  for (let col = 0; col < ops.length; col++) {
+    const o = ops[col];
+    const next = ops[col + 1];
+    if (o.t === 'swap' && next?.t === 'swap' && o.a.toLowerCase() === next.b.toLowerCase() && o.b.toLowerCase() === next.a.toLowerCase()) {
+      fixes.push({ cols: [col, col + 1], pos: j, len: 2, badge: `${o.a}${next.a} \u2192 ${o.b}${next.b}`, text: `<b>${esc(o.b + next.b)}</b>, not ${esc(o.a + next.a)}` });
+      col++;
+      j += 2;
+      continue;
     }
-    return best;
-  };
-  const count = l => [...w].filter(c => c === l).length;
-  const involved = new Set(errs.flatMap(o => [o.a, o.b]).filter(Boolean)
-    .map(c => c.toLowerCase()).filter(c => /[a-z]/.test(c) && w.includes(c)));
-  const doubled = new Set([...w].filter(c => /[a-z]/.test(c) && longest(c) > 1));
-  if (!involved.size || !doubled.size) return '';
-  const letters = [...new Set(w)].filter(c => doubled.has(c) || (involved.has(c) && count(c) === 1));
-  if (!letters.some(c => involved.has(c))) return '';
-  return ` Remember: ${letters.map(c => `${NUMBER_WORDS[longest(c)] || longest(c)} <b>${esc(c)}</b>`).join(', ')}.`;
+    const after = ops[col + 2];
+    const moved = next?.t === 'same' && after && ((o.t === 'miss' && after.t === 'extra') || (o.t === 'extra' && after.t === 'miss'))
+      && (o.a || o.b).toLowerCase() === (after.a || after.b).toLowerCase();
+    if (moved) {
+      const right = o.t === 'miss' ? o.b + next.b : next.b + after.b;
+      const wrong = o.t === 'miss' ? next.a + after.a : o.a + next.a;
+      fixes.push({ cols: [col, col + 1, col + 2], pos: j, len: 2, badge: `${wrong} \u2192 ${right}`, text: `<b>${esc(right)}</b>, not ${esc(wrong)}` });
+      col += 2;
+      j += 2;
+      continue;
+    }
+    if (o.t === 'miss') {
+      const b = o.b.toLowerCase();
+      const second = w[j - 1] === b || w[j + 1] === b;
+      fixes.push({ cols: [col], pos: j, len: 1, badge: `+ ${letterLabel(o.b)}`, text: `Add ${second ? 'a second' : 'the missing'} <b>${esc(letterLabel(o.b))}</b>` });
+    } else if (o.t === 'swap') {
+      fixes.push({ cols: [col], pos: j, len: 1, badge: `${letterLabel(o.a)} \u2192 ${letterLabel(o.b)}`, text: `<b>${esc(letterLabel(o.b))}</b> here, not ${esc(letterLabel(o.a))}` });
+    } else if (o.t === 'extra') {
+      fixes.push({ cols: [col], pos: -1, len: 0, badge: `\u2212 ${letterLabel(o.a)}`, text: `Take out the extra <b>${esc(letterLabel(o.a))}</b>` });
+    }
+    if (o.t !== 'extra') j++;
+  }
+  return fixes;
 }
 
-function spellingTip(ops, word) {
-  const errs = ops.filter(o => o.t !== 'same');
-  if (!errs.length) return '';
-  const k = ops.indexOf(errs[0]);
-  const x = ops[k];
-  const y = ops[k + 1];
-  let tip;
-  if (errs.length === 2 && y === errs[1] && x.t === 'swap' && y.t === 'swap'
-      && x.a.toLowerCase() === y.b.toLowerCase() && x.b.toLowerCase() === y.a.toLowerCase()) {
-    tip = `You swapped <b>${esc(x.b)}</b> and <b>${esc(y.b)}</b>.`;
-  } else if (errs.length === 1) {
-    tip = x.t === 'extra' ? `You added an extra <b>${esc(x.a)}</b>.`
-      : x.t === 'miss' ? `You missed one <b>${esc(x.b)}</b>.`
-      : `You wrote <b>${esc(x.a)}</b> instead of <b>${esc(x.b)}</b>.`;
-  } else {
-    tip = `${errs.length} letters were different. The green tiles show the right spelling.`;
-  }
-  return tip + letterReminder(errs, word);
+// Each column is what you wrote above the right letter, so a long word wraps onto another
+// line without the two rows drifting apart.
+function compareHtml(ops, fixes, typed) {
+  let j = 0;
+  const cols = ops.map((o, col) => {
+    const fixed = o.t !== 'same';
+    const pos = o.t === 'extra' ? -1 : j++;
+    const n = fixes.findIndex(f => f.cols[0] === col);
+    const top = typed ? `<span class="c u">${o.t === 'miss' ? '<i class="hole"></i>' : shownLetter(o.a)}</span>` : '';
+    const right = `<span class="c r"${pos >= 0 ? ` data-pos="${pos}"` : ''}>${o.t === 'extra' ? '<i class="dash"></i>' : shownLetter(o.b)}</span>`;
+    return `<div class="${fixed ? 'fx' : ''}">${top}${right}${fixed ? '<s></s>' : ''}${n >= 0 ? `<em>${n + 1}</em>` : ''}</div>`;
+  });
+  const marks = typed ? '<div class="mk-col"><span class="c"><i class="mk x">&#10005;</i></span><span class="c"><i class="mk ok">&#10003;</i></span></div>' : '';
+  return marks + cols.join('');
+}
+
+const underline = (word, pos, len) => (pos < 0 ? esc(word)
+  : `${esc(word.slice(0, pos))}<u>${esc(word.slice(pos, pos + len))}</u>${esc(word.slice(pos + len))}`);
+
+function rememberHtml(word) {
+  const doubles = [...new Set(word.toLowerCase().match(/([a-z])\1+/g) || [])];
+  if (!doubles.length) return '';
+  return `<b>Remember</b>${doubles.map(d => `<span>${esc(d)}</span>`).join('')}<em>${doubles.map(d => `${NUMBER_WORDS[d.length] || d.length} ${esc(d[0])}`).join(', ')}</em>`;
 }
 
 const markTyped = (typed, word) => alignLetters(typed, word)
@@ -2163,20 +2219,24 @@ function showCorrect(word, secs) {
 function showWrong(word, typed) {
   setState('bad');
   $('#bad-title').textContent = typed ? 'Not quite' : 'Skipped';
-  $('#bad-word').innerHTML = spoken(word);
-  $('#bad-typed-wrap').hidden = !typed;
-  const ops = typed ? alignLetters(typed, word) : [];
-  const typedRow = ops.map(o => (o.t === 'same' ? tile(o.a, 'dim') : o.t === 'miss' ? tile('', 'gap') : tile(o.a, 'wrong')));
-  const correctRow = typed
-    ? ops.filter(o => o.t !== 'extra').map(o => tile(o.b, o.t === 'same' ? 'good' : 'good add'))
-    : [...word].map(l => tile(l, 'good'));
-  $('#bad-typed').innerHTML = typedRow.join('');
-  $('#bad-typed').classList.toggle('long', typedRow.length > 11);
-  $('#bad-correct').innerHTML = correctRow.join('');
-  $('#bad-correct').classList.toggle('long', correctRow.length > 11);
-  const tip = typed ? spellingTip(ops, word) : '';
-  $('#bad-tip').hidden = !tip;
-  $('#bad-tip span').innerHTML = tip;
+  $('#bad-word').innerHTML = `${esc(word)}<button class="say say-big" type="button" data-speak="${esc(word)}" aria-label="Say the word" title="Say the word">${SPEAKER_ICON}</button>`;
+  const ops = typed ? alignLetters(typed, word) : [...word].map(b => ({ t: 'same', a: '', b }));
+  const fixes = typed ? fixesFor(ops, word) : [];
+  const cmp = $('#bad-cmp');
+  cmp.style.setProperty('--n', ops.length + (typed ? 1 : 0));
+  cmp.classList.toggle('solo', !typed);
+  cmp.innerHTML = compareHtml(ops, fixes, Boolean(typed));
+  $('#bad-legend-you').hidden = !typed;
+  $('#bad-fixes').hidden = !fixes.length;
+  $('#bad-fix-title').textContent = fixes.length === 1 ? '1 thing to fix' : `${fixes.length} things to fix`;
+  $('#bad-fix-list').innerHTML = fixes.map((f, i) => `<li>
+      <span class="fix-n">${i + 1}</span>
+      <span class="fix-text"><span>${f.text}</span><small>${underline(word, f.pos, f.len)}</small></span>
+      <span class="fix-badge">${esc(f.badge)}</span>
+    </li>`).join('');
+  const remember = typed ? rememberHtml(word) : '';
+  $('#bad-remember').hidden = !remember;
+  $('#bad-remember').innerHTML = remember;
   $('#bad-meaning').hidden = true;
   $('#bad-entry').hidden = false;
   $('.res-bad .res-body').scrollTop = 0;
@@ -2261,6 +2321,14 @@ $('#ok-next').addEventListener('click', next);
 $('#bad-next').addEventListener('click', next);
 $('#bad-hear').addEventListener('click', () => speak(current()));
 $('#bad-entry').addEventListener('click', () => openSheet(current()));
+$('#bad-spell').addEventListener('click', () => {
+  const btn = $('#bad-spell');
+  btn.classList.add('on');
+  spellOut(current(), i => {
+    $$('#bad-cmp .r').forEach(el => el.classList.toggle('now', +el.dataset.pos === i));
+    if (i < 0) btn.classList.remove('on');
+  });
+});
 $('#ok-card').addEventListener('click', e => {
   if (!e.target.closest('button')) openSheet(current());
 });

@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap">
-  <link rel="stylesheet" href="styles.css?v=38">
+  <link rel="stylesheet" href="styles.css?v=39">
 </head>
 <body class="locked">
   <div id="gate" class="gate">
@@ -588,23 +588,29 @@
       <!-- Wrong or skipped -->
       <div class="res res-bad" aria-live="polite">
         <div class="res-body">
-          <p id="bad-title" class="res-title bad">Not quite</p>
-          <p class="cap big-cap">The word was <b id="bad-word"></b></p>
-          <div class="card res-card">
-            <div id="bad-typed-wrap">
-              <p class="lab">You wrote</p>
-              <div id="bad-typed" class="tiles"></div>
+          <div class="bad-head">
+            <p id="bad-title" class="bad-pill">Not quite</p>
+            <p id="bad-word" class="bad-word"></p>
+            <div class="saved-row">
+              <span class="saved"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>Saved to My mistakes</span>
+              <button id="bad-entry" class="linkbtn" type="button">Full entry &rsaquo;</button>
             </div>
-            <p class="lab spaced">Correct spelling</p>
-            <div id="bad-correct" class="tiles"></div>
           </div>
-          <div id="bad-tip" class="tip">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg>
-            <span></span>
+          <div class="card res-card cmp-card">
+            <div class="cmp-legend">
+              <span id="bad-legend-you"><i class="mk x" aria-hidden="true">&#10005;</i>You wrote</span>
+              <span><i class="mk ok" aria-hidden="true">&#10003;</i>Right spelling</span>
+            </div>
+            <div id="bad-cmp" class="cmp"></div>
+            <button id="bad-spell" class="spell-btn" type="button">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>
+              Spell the right word letter by letter
+            </button>
           </div>
-          <div class="saved-row">
-            <span class="saved"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>Saved to My mistakes</span>
-            <button id="bad-entry" class="linkbtn" type="button">Full entry</button>
+          <div id="bad-fixes" class="card res-card fix-card">
+            <p id="bad-fix-title" class="fix-title"></p>
+            <ol id="bad-fix-list" class="fix-list"></ol>
+            <p id="bad-remember" class="remember" hidden></p>
           </div>
           <div id="bad-meaning" class="card res-card meaning-card" hidden>
             <p class="lab">Meaning</p>
@@ -682,7 +688,7 @@
     Definitions from the <a href="https://dictionaryapi.dev/" target="_blank" rel="noopener">Free Dictionary API</a>. Progress is saved only in this browser.
   </footer>
 
-  <script src="words.js?v=38"></script>
-  <script src="app.js?v=38"></script>
+  <script src="words.js?v=39"></script>
+  <script src="app.js?v=39"></script>
 </body>
 </html>
