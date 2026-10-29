@@ -298,7 +298,8 @@ function utter(text, rate, id, pause = 150) {
 }
 
 // The built-in words, their sentences and their meanings are recorded with Microsoft's Sonia
-// neural voice. Anything else, like your own words, is read by the device's speech voice.
+// neural voice. Your own words get a Piper voice made on this device (see Voice for my words),
+// and anything without a recording is read by the device's speech voice.
 const RECORDINGS = new Map();
 for (const [key, [meaning, example]] of Object.entries(WORD_INFO)) {
   RECORDINGS.set(key, key).set(meaning, `${key}-meaning`).set(example, `${key}-sentence`);
@@ -325,8 +326,16 @@ function stopVoice() {
   if (!voiceAudio.paused) voiceAudio.pause();
 }
 
-function playRecording(name, text, rate, id) {
-  fetchRecording(name)
+// A promise of a playable URL, or null when nothing has been recorded or made for this text.
+function recordingUrl(text, slow) {
+  const name = recordingFor(text);
+  if (name) return fetchRecording(slow ? `${name}-slow` : name);
+  const key = clipKey(text, slow);
+  return madeClips.has(key) ? madeClipUrl(key) : null;
+}
+
+function playRecording(source, text, rate, id) {
+  source
     .then(url => {
       if (id !== speakId) return;
       voiceAudio.src = url;
@@ -344,19 +353,20 @@ function speakDevice(text, rate, id) {
   u.onend = u.onerror = () => { if (id === speakId) setSpeaking(false); };
 }
 
-function speak(text, rate = +$('#rate').value, recording = recordingFor(text)) {
+function speak(text, rate = +$('#rate').value, slow = false) {
   if (!text) return;
   stopLetters();
   stopVoice();
   const id = ++speakId;
-  if (recording) {
+  const source = recordingUrl(text, slow);
+  if (source) {
     if (canSpeak && (speechSynthesis.speaking || speechSynthesis.pending)) speechSynthesis.cancel();
-    playRecording(recording, text, rate, id);
+    playRecording(source, text, rate, id);
   } else if (canSpeak) speakDevice(text, rate, id);
 }
 
 const slowRate = () => Math.max(0.3, +$('#rate').value * 0.5);
-const speakSlow = word => speak(word, slowRate(), recordingFor(word) && `${recordingFor(word)}-slow`);
+const speakSlow = word => speak(word, slowRate(), true);
 
 // Spelling follows your speed setting, a touch slower so each letter stands apart.
 const spellRate = () => +$('#rate').value * 0.95;
@@ -854,6 +864,286 @@ function wordInfo(word) {
   return { meaning: built[0], example: built[1] };
 }
 
+/* ---------- Voice for my words ---------- */
+
+// Each own word gets four Piper recordings, made when it's added: the word, the word slowly,
+// its sentence and its meaning. They're never made during a dictation, and a word stays out of
+// dictations until its recordings are ready. Words saved before this have no `voice` flag and
+// keep the device voice until you choose Make their voices.
+const PIPER_VOICES = {
+  'en_GB-alba-medium': 'Alba, Scottish female',
+  'en_GB-cori-medium': 'Cori, female',
+  'en_GB-jenny_dioco-medium': 'Jenny, female',
+  'en_GB-southern_english_female-low': 'Southern English, female',
+  'en_GB-alan-medium': 'Alan, male',
+  'en_GB-northern_english_male-medium': 'Northern English, male',
+};
+const PIPER_DEFAULT = 'en_GB-alba-medium';
+const piperVoice = () => (PIPER_VOICES[store.get('piperVoice', '')] ? store.get('piperVoice', '') : PIPER_DEFAULT);
+const piperName = () => PIPER_VOICES[piperVoice()].split(',')[0];
+const clipKey = (text, slow) => `${piperVoice()}|${slow ? 'slow|' : ''}${String(text).replace(/^"|"$/g, '').trim()}`;
+
+const clipDb = new Promise((resolve, reject) => {
+  const req = indexedDB.open('wordwise-voices', 1);
+  req.onupgradeneeded = () => req.result.createObjectStore('clips');
+  req.onsuccess = () => resolve(req.result);
+  req.onerror = () => reject(req.error);
+});
+
+function clipStore(mode, run) {
+  return clipDb.then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction('clips', mode);
+    const req = run(tx.objectStore('clips'));
+    tx.oncomplete = () => resolve(req && req.result);
+    tx.onerror = tx.onabort = () => reject(tx.error);
+  }));
+}
+
+const madeClips = new Set();
+const madeUrls = new Map();
+let clipsLoaded = false;
+
+function madeClipUrl(key) {
+  if (!madeUrls.has(key)) {
+    const url = clipStore('readonly', s => s.get(key))
+      .then(audio => (audio ? URL.createObjectURL(new Blob([audio], { type: 'audio/wav' })) : Promise.reject(new Error('missing'))));
+    url.catch(() => madeUrls.delete(key));
+    madeUrls.set(key, url);
+  }
+  return madeUrls.get(key);
+}
+
+// What Piper has to make for a word. Text the built-in recordings already cover is skipped.
+function clipsFor(b) {
+  const clips = [];
+  const add = (text, slow) => { if (text && !recordingFor(text)) clips.push({ key: clipKey(text, slow), text, slow }); };
+  add(b.word);
+  add(b.word, true);
+  add(b.example);
+  add(b.meaning);
+  return clips;
+}
+
+const maker = { worker: null, job: null, failed: '', download: null, jobs: 0 };
+
+function voiceState(b) {
+  if (!b.voice) return 'none';
+  if (clipsFor(b).every(c => madeClips.has(c.key))) return 'ready';
+  return maker.job?.word === bankKey(b.word) ? 'making' : 'waiting';
+}
+
+// Kept out of dictations, unless this device can't make voices at all.
+const voiceWaiting = word => {
+  const b = bankEntry(word);
+  return Boolean(b) && !maker.failed && ['waiting', 'making'].includes(voiceState(b));
+};
+
+function startMaker() {
+  try {
+    maker.worker = new Worker('voice-maker.js?v=38', { type: 'module' });
+  } catch {
+    return voiceFailed("This browser can't make natural voices.");
+  }
+  maker.worker.onmessage = ({ data }) => {
+    if (data.type === 'progress') {
+      maker.download = data;
+      renderVoiceStatus();
+      return;
+    }
+    const job = maker.job;
+    if (!job || job.id !== data.id) return;
+    maker.job = null;
+    maker.download = null;
+    if (data.type === 'error') return job.test ? job.reject(new Error(data.message)) : voiceFailed(data.message);
+    if (job.test) return job.resolve(data.audio);
+    if (!job.key.startsWith(`${piperVoice()}|`)) return makeVoices();
+    clipStore('readwrite', s => s.put(data.audio, job.key))
+      .then(() => {
+        madeClips.add(job.key);
+        renderVoiceProgress();
+        makeVoices();
+      })
+      .catch(() => voiceFailed('There is no room left on this device to save voices.'));
+  };
+  maker.worker.onerror = e => {
+    e.preventDefault();
+    maker.worker = null;
+    if (maker.job?.test) maker.job.reject(new Error('The voice maker stopped.'));
+    maker.job = null;
+    voiceFailed("This browser can't make natural voices.");
+  };
+}
+
+function voiceFailed(message) {
+  maker.failed = navigator.onLine ? message : "You're offline, and the voice needs a one-time download first.";
+  renderVoiceProgress();
+}
+
+addEventListener('online', () => {
+  if (!maker.failed) return;
+  maker.failed = '';
+  makeVoices();
+});
+
+function sendJob(job) {
+  if (!maker.worker) startMaker();
+  if (!maker.worker) return false;
+  maker.job = { ...job, id: ++maker.jobs };
+  maker.worker.postMessage({ id: maker.job.id, voice: piperVoice(), text: job.text, slow: Boolean(job.slow) });
+  return true;
+}
+
+function nextClip() {
+  for (const b of bank) {
+    if (!b.voice) continue;
+    const clip = clipsFor(b).find(c => !madeClips.has(c.key));
+    if (clip) return { ...clip, word: bankKey(b.word) };
+  }
+  return null;
+}
+
+// Makes the next missing recording. Nothing new starts while a dictation or its summary is open.
+function makeVoices() {
+  if (maker.job || maker.testing || maker.failed || !clipsLoaded || document.body.classList.contains('in-play')) return renderVoiceStatus();
+  const next = nextClip();
+  if (next) sendJob(next);
+  renderVoiceProgress();
+}
+
+function testPiper() {
+  maker.testing = true;
+  return new Promise((resolve, reject) => {
+    const go = () => {
+      if (maker.job) return setTimeout(go, 200);
+      if (!sendJob({ test: true, text: `Hello, I'm ${piperName()}. This is how your own words will sound.`, resolve, reject })) reject(new Error(maker.failed));
+      renderVoiceStatus();
+    };
+    go();
+  }).finally(() => { maker.testing = false; });
+}
+
+// Drops recordings of words you deleted or changed, and of voices you no longer use.
+function tidyClips() {
+  const keep = new Set(bank.flatMap(b => clipsFor(b).map(c => c.key)));
+  const stale = [...madeClips].filter(k => !keep.has(k));
+  if (!stale.length) return;
+  stale.forEach(k => { madeClips.delete(k); madeUrls.delete(k); });
+  clipStore('readwrite', s => stale.forEach(k => s.delete(k))).catch(() => {});
+}
+
+clipStore('readonly', s => s.getAllKeys())
+  .then(keys => keys.forEach(k => madeClips.add(k)))
+  .catch(() => {})
+  .finally(() => {
+    clipsLoaded = true;
+    tidyClips();
+    makeVoices();
+  });
+
+const VOICE_BADGES = {
+  ready: ['ready', '&#10003; Voice ready'],
+  making: ['making', 'Making voice\u2026'],
+  waiting: ['waiting', 'Waiting'],
+  none: ['none', 'Phone voice'],
+};
+function voiceBadge(b) {
+  const state = maker.failed && voiceState(b) !== 'ready' ? 'none' : voiceState(b);
+  const [cls, label] = VOICE_BADGES[state];
+  return `<span class="vbadge vb-${cls}">${label}</span>`;
+}
+
+const MB = n => Math.round(n / 1048576);
+
+function renderVoiceStatus() {
+  const card = $('#voice-card');
+  const pending = bank.filter(b => b.voice && voiceState(b) !== 'ready');
+  const older = bank.filter(b => !b.voice).length;
+  $('#voice-older').hidden = !older;
+  if (older) $('#voice-older-title').textContent = `${plural(older, 'older word')} ${older === 1 ? "doesn't" : "don't"} have a natural voice yet`;
+
+  const dl = maker.download;
+  let html = '';
+  if (maker.failed) {
+    html = `<p class="vc-title">Couldn't make natural voices here</p>
+      <p class="muted small">${esc(maker.failed)} Your words use your phone's voice for now.</p>
+      <button class="btn ghost small" type="button" data-voice-retry>Try again</button>`;
+  } else if (dl && dl.total && dl.loaded < dl.total) {
+    html = `<p class="vc-title">Getting the ${esc(piperName())} voice ready</p>
+      <p class="muted small">One-time download, ${MB(dl.loaded)} of ${MB(dl.total)} MB. After this it works offline.</p>
+      <div class="vc-bar"><i style="width:${Math.round((dl.loaded / dl.total) * 100)}%"></i></div>`;
+  } else if (pending.length) {
+    const b = bankEntry(maker.job?.word || '') || pending[0];
+    const clips = clipsFor(b);
+    const done = clips.filter(c => madeClips.has(c.key)).length;
+    const rest = pending.length - 1;
+    html = `<p class="vc-title"><b>${esc(b.word)}</b>: making its voice\u2026 ${done} of ${clips.length}</p>
+      <p class="muted small">${rest ? `${plural(rest, 'more word')} waiting. ` : ''}Words join your dictations as soon as their voice is ready.</p>
+      <div class="vc-bar"><i style="width:${Math.round((done / clips.length) * 100)}%"></i></div>`;
+  }
+  card.innerHTML = html;
+  card.hidden = !html;
+  const note = $('#piper-note');
+  if (note) note.textContent = dl && dl.total && dl.loaded < dl.total
+    ? `Downloading ${piperName()}: ${MB(dl.loaded)} of ${MB(dl.total)} MB\u2026`
+    : 'Downloads once, about 60 MB, so use Wi-Fi. After that it works offline. Changing the voice remakes your words in the new one.';
+}
+
+function renderVoiceProgress() {
+  renderVoiceStatus();
+  $$('#bank-list [data-voice-word]').forEach(el => {
+    const b = bankEntry(el.dataset.voiceWord);
+    if (b) el.innerHTML = voiceBadge(b);
+  });
+  renderHero();
+}
+
+$('#words').addEventListener('click', e => {
+  if (e.target.closest('[data-voice-retry]')) {
+    maker.failed = '';
+    makeVoices();
+  }
+  if (e.target.closest('#voice-older-go')) {
+    bank.forEach(b => { b.voice = true; });
+    saveBank();
+    renderBank();
+    makeVoices();
+  }
+});
+
+function renderPiperVoices() {
+  $('#piper-voice').innerHTML = Object.entries(PIPER_VOICES)
+    .map(([id, name]) => `<option value="${id}">${esc(name)}</option>`).join('');
+  $('#piper-voice').value = piperVoice();
+}
+renderPiperVoices();
+
+$('#piper-voice').addEventListener('change', e => {
+  store.set('piperVoice', e.target.value);
+  maker.failed = '';
+  tidyClips();
+  renderBank();
+  makeVoices();
+});
+
+$('#piper-test').addEventListener('click', async () => {
+  const btn = $('#piper-test');
+  btn.disabled = true;
+  btn.textContent = 'Getting it ready\u2026';
+  try {
+    const audio = await testPiper();
+    stopSpeech();
+    voiceAudio.src = URL.createObjectURL(new Blob([audio], { type: 'audio/wav' }));
+    voiceAudio.defaultPlaybackRate = voiceAudio.playbackRate = 1;
+    voiceAudio.play().catch(() => {});
+  } catch (err) {
+    toast(`Couldn't make the voice here. ${err.message || ''}`.trim());
+  }
+  btn.disabled = false;
+  btn.textContent = 'Hear this voice';
+  renderVoiceStatus();
+  makeVoices();
+});
+
 function listLabel(key) {
   if (key === 'mistakes') return 'My mistakes';
   if (key === 'custom') return 'My own words';
@@ -867,11 +1157,16 @@ function listWords(key) {
 }
 
 function renderHero() {
-  const n = listWords(selectedList).length;
+  const all = listWords(selectedList);
+  const waiting = all.filter(voiceWaiting).length;
+  const n = all.length - waiting;
   const take = selectedCount ? Math.min(selectedCount, n) : n;
   $('#hero-title').textContent = listLabel(selectedList);
+  const later = waiting ? ` ${plural(waiting, 'word')} ${waiting === 1 ? 'is' : 'are'} still getting ${waiting === 1 ? 'its' : 'their'} voice and will join when ready.` : '';
   if (n) {
-    $('#hero-sub').textContent = `${plural(take, 'word')}${$('#shuffle').checked ? ', shuffled' : ''}. Hear each word, type it, then study it.`;
+    $('#hero-sub').textContent = `${plural(take, 'word')}${$('#shuffle').checked ? ', shuffled' : ''}. Hear each word, type it, then study it.${later}`;
+  } else if (waiting) {
+    $('#hero-sub').textContent = `Your words are getting their natural voice. They'll be ready in a moment.`;
   } else {
     $('#hero-sub').textContent = selectedList === 'mistakes'
       ? 'No saved mistakes yet. Pick another list.'
@@ -976,7 +1271,7 @@ $('#words').addEventListener('click', e => {
 
 const bankItem = b => `<li class="bank-item">
     <div class="bank-main">
-      <p class="bank-word">${esc(b.word)}<button class="say" type="button" data-speak="${esc(b.word)}" aria-label="Say ${esc(b.word)}" title="Say the word">${SPEAKER_ICON}</button></p>
+      <p class="bank-word">${esc(b.word)}<button class="say" type="button" data-speak="${esc(b.word)}" aria-label="Say ${esc(b.word)}" title="Say the word">${SPEAKER_ICON}</button><span data-voice-word="${esc(b.word)}">${voiceBadge(b)}</span></p>
       ${b.meaning ? `<p class="bank-def">${spoken(b.meaning)}</p>` : '<p class="bank-def none">No meaning yet</p>'}
       ${b.example ? `<p class="example">${spoken(`"${b.example}"`)}</p>` : ''}
     </div>
@@ -1004,6 +1299,7 @@ function renderBank() {
   $('#bank-list').innerHTML = rows.length || !bank.length
     ? rows.map(bankItem).join('')
     : '<li class="bank-none muted small">No words match.</li>';
+  renderVoiceStatus();
 }
 
 $('#bank-search').addEventListener('input', renderBank);
@@ -1030,6 +1326,7 @@ $('#bank-list').addEventListener('click', e => {
       bank.splice(i, 0, removed);
       saveBank();
       renderLists();
+      makeVoices();
     },
   });
 });
@@ -1061,6 +1358,7 @@ $('#fill-meanings').addEventListener('click', async () => {
   btn.disabled = false;
   btn.textContent = 'Fill missing meanings';
   renderBank();
+  makeVoices();
   const missed = todo.length - found;
   toast(found
     ? `Added ${plural(found, 'meaning')}.${missed ? ` ${missed} not found in the dictionary.` : ''}`
@@ -1115,11 +1413,12 @@ $('#add-form').addEventListener('submit', e => {
     const b = bankEntry(editingKey);
     if (same && same !== b) return error(`"${same.word}" is already in your word bank.`);
     if (b) Object.assign(b, { word, meaning, example });
-    else bank.push({ word, meaning, example });
+    else bank.push({ word, meaning, example, voice: true });
     saveBank();
     resetAddForm();
     showPane('bank');
     renderLists();
+    makeVoices();
     toast(`Saved "${word}"`);
     return;
   }
@@ -1130,12 +1429,13 @@ $('#add-form').addEventListener('submit', e => {
     if (example) same.example = example;
     toast(`Updated "${same.word}"`);
   } else {
-    bank.push({ word, meaning, example });
-    toast(`Added "${word}"`);
+    bank.push({ word, meaning, example, voice: true });
+    toast(`Added "${word}". Making its voice now.`);
   }
   saveBank();
   resetAddForm();
   renderLists();
+  makeVoices();
   $('#add-word').focus();
 });
 
@@ -1303,7 +1603,7 @@ function applyImport() {
   pendingImport.plan.forEach(p => {
     const have = bankEntry(p.word);
     if (p.status === 'new' && !have) {
-      bank.push({ word: p.word, meaning: p.meaning, example: p.example });
+      bank.push({ word: p.word, meaning: p.meaning, example: p.example, voice: true });
       added++;
     } else if (p.status === 'update' && have) {
       if (p.meaning) have.meaning = p.meaning;
@@ -1316,6 +1616,7 @@ function applyImport() {
   $('#import-text').value = '';
   renderLists();
   showPane('bank');
+  makeVoices();
   toast([added && `Added ${plural(added, 'word')}`, updated && `updated ${updated}`].filter(Boolean).join(', ') || 'Nothing changed');
 }
 
@@ -1326,7 +1627,7 @@ function restoreBackup(backup) {
     if (k !== AUTH_KEY && typeof v === 'string') localStorage.setItem(k, v);
   });
   store.set('wordBank', (backup.words || [])
-    .map(w => ({ word: cleanWord(w?.word), meaning: cleanText(w?.meaning), example: cleanText(w?.example) }))
+    .map(w => ({ word: cleanWord(w?.word), meaning: cleanText(w?.meaning), example: cleanText(w?.example), voice: true }))
     .filter(w => !wordProblem(w.word)));
   location.reload();
 }
@@ -1453,7 +1754,10 @@ function openPlay(id) {
   document.body.classList.toggle('in-play', Boolean(id));
   if (id) fitPlay();
   closePopovers();
-  if (!id) exitFullscreen();
+  if (!id) {
+    exitFullscreen();
+    makeVoices();
+  }
 }
 
 const setState = state => { $('#session').dataset.state = state; };
@@ -1531,9 +1835,11 @@ $('#fs-on').addEventListener('change', e => store.set('fullscreen', e.target.che
 
 $('#setup').addEventListener('submit', e => {
   e.preventDefault();
-  let words = listWords(selectedList);
+  const all = listWords(selectedList);
+  let words = all.filter(w => !voiceWaiting(w));
   if (!words.length) {
-    $('#setup-error').textContent = selectedList === 'mistakes' ? 'You have no saved mistakes yet.' : 'Add at least one word first.';
+    $('#setup-error').textContent = all.length ? 'Your words are still getting their natural voice. They\u2019ll be ready in a moment.'
+      : selectedList === 'mistakes' ? 'You have no saved mistakes yet.' : 'Add at least one word first.';
     return;
   }
   $('#setup-error').textContent = '';
@@ -1590,7 +1896,7 @@ function showWord() {
   updateHints(word);
   const upcoming = session.words[session.index + 1];
   if (upcoming) lookup(upcoming).catch(() => {});
-  if (upcoming && recordingFor(upcoming)) fetchRecording(recordingFor(upcoming)).catch(() => {});
+  if (upcoming) recordingUrl(upcoming)?.catch(() => {});
 }
 
 // Sentence and Meaning only show when there is something for them to read.

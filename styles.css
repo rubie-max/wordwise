@@ -301,7 +301,7 @@ body { --nav-h: 86px; }
 .popover-title { margin: 0; font-weight: 600; font-size: 1.02rem; }
 .voice-panel { display: grid; gap: .75rem; }
 .voice-slot .popover-title { display: none; }
-.voice-slot .voice-panel .btn { justify-self: start; }
+.voice-slot .voice-panel .btn, .piper-panel .btn { justify-self: start; }
 .voice-panel label { font-size: .8rem; color: var(--muted); font-weight: 500; }
 .voice-panel .switch { font-size: .9rem; color: var(--text); }
 .voice-panel select { margin-top: .3rem; font-size: .86rem; padding: .45rem .6rem; }
@@ -648,6 +648,16 @@ textarea { resize: vertical; margin-top: .9rem; }
 .bank-actions { display: flex; gap: .3rem; flex-shrink: 0; }
 .bank-actions .icon-btn { width: 34px; height: 34px; }
 .bank-actions [data-delete-word]:hover { color: var(--bad); }
+.vbadge { display: inline-block; margin-left: .45rem; padding: .12rem .55rem; border-radius: 999px; font-size: .7rem; font-weight: 600; vertical-align: .15em; white-space: nowrap; }
+.vb-ready { color: var(--accent-2); background: color-mix(in srgb, var(--accent-2) 14%, transparent); }
+.vb-making { color: var(--accent-ink); background: var(--accent-soft); }
+.vb-waiting { color: var(--muted); background: var(--surface); }
+.vb-none { color: var(--muted); border: 1px solid var(--border); }
+.voice-card { display: grid; gap: .5rem; justify-items: start; border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); background: var(--accent-soft); }
+.voice-card p { margin: 0; }
+.vc-title { font-weight: 600; }
+.vc-bar { justify-self: stretch; height: 5px; border-radius: 9px; background: var(--surface); overflow: hidden; }
+.vc-bar i { display: block; height: 100%; border-radius: 9px; background: var(--grad); transition: width .3s; }
 .bank-none { margin: 0; padding: 1.2rem 0; text-align: center; border-top: 1px solid var(--border); }
 .bank-empty { text-align: center; padding: 1.4rem .5rem .4rem; }
 .bank-empty p { margin: 0; }

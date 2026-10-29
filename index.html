@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap">
-  <link rel="stylesheet" href="styles.css?v=37">
+  <link rel="stylesheet" href="styles.css?v=38">
 </head>
 <body class="locked">
   <div id="gate" class="gate">
@@ -204,7 +204,14 @@
         <button type="button" role="tab" data-pane="export">Export</button>
       </div>
 
+      <div id="voice-card" class="card voice-card" role="status" hidden></div>
+
       <div class="words-pane" data-pane-body="bank">
+        <div id="voice-older" class="card voice-card" hidden>
+          <p id="voice-older-title" class="vc-title"></p>
+          <p class="muted small">They were added before natural voices, so they still use your phone's voice. Make theirs now, before your next dictation. Until it's ready they wait, like new words.</p>
+          <button id="voice-older-go" class="btn small" type="button">Make their voices</button>
+        </div>
         <div class="card bank">
           <div class="bank-head">
             <div>
@@ -397,6 +404,19 @@
           <p id="voice-tip" class="voice-tip" hidden>This device only has basic voices. For a natural voice, open WordWise in Microsoft Edge, or on iPhone download an Enhanced voice in Settings, Accessibility, Spoken Content, Voices.</p>
           <button id="voice-test" class="btn ghost small" type="button">Test voice</button>
             </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <h2>Voice for my words</h2>
+            <p class="muted small">Your own words get a natural Piper voice, made on this device when you add them. Built-in words use the recorded voice.</p>
+          </div>
+          <div class="voice-panel piper-panel">
+            <label>Speaker
+              <select id="piper-voice"></select>
+            </label>
+            <p id="piper-note" class="voice-tip"></p>
+            <button id="piper-test" class="btn ghost small" type="button">Hear this voice</button>
           </div>
         </div>
         <div class="card">
@@ -662,7 +682,7 @@
     Definitions from the <a href="https://dictionaryapi.dev/" target="_blank" rel="noopener">Free Dictionary API</a>. Progress is saved only in this browser.
   </footer>
 
-  <script src="words.js?v=37"></script>
-  <script src="app.js?v=37"></script>
+  <script src="words.js?v=38"></script>
+  <script src="app.js?v=38"></script>
 </body>
 </html>
