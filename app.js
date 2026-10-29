@@ -1451,6 +1451,7 @@ function openPlay(id) {
   $('#session').hidden = id !== 'session';
   $('#summary').hidden = id !== 'summary';
   document.body.classList.toggle('in-play', Boolean(id));
+  if (id) fitPlay();
   closePopovers();
   if (!id) exitFullscreen();
 }
@@ -1504,9 +1505,27 @@ function renderFullscreen() {
   b.title = on ? 'Exit full screen' : 'Full screen';
 }
 
+// Some phones don't update 100dvh when full screen turns on or off, which pushed the bottom
+// keyboard row off the screen, so the practice screen is sized to what is actually visible.
+function fitPlay() {
+  const vv = window.visualViewport;
+  const h = vv ? vv.height * vv.scale : innerHeight;
+  document.documentElement.style.setProperty('--play-h', `${Math.round(h)}px`);
+}
+fitPlay();
+addEventListener('resize', fitPlay);
+addEventListener('orientationchange', () => setTimeout(fitPlay, 300));
+window.visualViewport?.addEventListener('resize', fitPlay);
+
 $('#fs-toggle').hidden = !fullscreenSupported();
 $('#fs-toggle').addEventListener('click', () => (isFullscreen() ? exitFullscreen() : enterFullscreen()));
-['fullscreenchange', 'webkitfullscreenchange'].forEach(type => document.addEventListener(type, renderFullscreen));
+['fullscreenchange', 'webkitfullscreenchange'].forEach(type => document.addEventListener(type, () => {
+  renderFullscreen();
+  fitPlay();
+  // The new size can land a moment after the event.
+  setTimeout(fitPlay, 150);
+  setTimeout(fitPlay, 600);
+}));
 localStorage.removeItem('fsHints');
 $('#fs-on').addEventListener('change', e => store.set('fullscreen', e.target.checked));
 

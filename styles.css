@@ -761,6 +761,7 @@ body.in-play { overflow: hidden; --nav-h: 0px; }
   right: 0;
   height: 100vh;
   height: 100dvh;
+  height: min(var(--play-h, 100dvh), 100dvh);
   z-index: 60;
   background: var(--bg);
   isolation: isolate;
@@ -871,6 +872,10 @@ body.in-play { overflow: hidden; --nav-h: 0px; }
   user-select: none;
   -webkit-user-select: none;
 }
+/* Full screen reaches the very bottom of the glass, under rounded corners and the gesture bar,
+   which phones don't always report as a safe area. */
+:root:fullscreen .kb { padding-bottom: max(16px, calc(5px + env(safe-area-inset-bottom))); }
+:root:-webkit-full-screen .kb { padding-bottom: max(16px, calc(5px + env(safe-area-inset-bottom))); }
 .kb-tools { display: flex; gap: 6px; padding: 0 6px 2px; }
 .tool {
   flex: 1 1 0;
@@ -909,7 +914,8 @@ body.in-play { overflow: hidden; --nav-h: 0px; }
   position: relative;
   z-index: 0;
   grid-column-end: span 2;
-  height: 58px;
+  /* Keys shrink on short screens so the bottom row never falls off the edge. */
+  height: clamp(42px, calc((min(var(--play-h, 100dvh), 100dvh) - 330px) / 5), 58px);
   display: grid;
   place-items: center;
   padding: 0;
