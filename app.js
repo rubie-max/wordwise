@@ -626,20 +626,111 @@ function keyFeedback(key) {
 const API = 'https://api.dictionaryapi.dev/api/v2/entries/en/';
 const cache = new Map();
 
+// Open English WordNet, built by tools/build_words.py: one file per first letter, each
+// word -> [[pos, definition, example?, synonyms?, antonyms?], ...]. Kept for offline use.
+const DATA_VERSION = 1;
+const WORDNET_POS = { n: 'noun', v: 'verb', a: 'adjective', r: 'adverb' };
+const WORDNET_SOURCE = 'https://en-word.net/';
+const wordnetFiles = new Map();
+
+function wordnetFile(letter) {
+  if (!wordnetFiles.has(letter)) {
+    const file = fetch(`dict/${letter}.json?v=${DATA_VERSION}`)
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error(r.status))));
+    file.catch(() => wordnetFiles.delete(letter));
+    wordnetFiles.set(letter, file);
+  }
+  return wordnetFiles.get(letter);
+}
+
+// The base forms to try for a word, so "running" finds "run" and "cities" finds "city".
+function baseForms(w) {
+  const forms = [w];
+  const add = (end, to = '') => { if (w.endsWith(end) && w.length > end.length + 2) forms.push(w.slice(0, -end.length) + to); };
+  add('ies', 'y'); add('ied', 'y'); add('es'); add('s'); add('ed'); add('ed', 'e'); add('ing'); add('ing', 'e');
+  add('er'); add('est'); add('ier', 'y'); add('iest', 'y'); add('ly');
+  for (const end of ['ed', 'ing', 'er', 'est']) {
+    const stem = w.slice(0, -end.length);
+    if (w.endsWith(end) && /([b-df-hj-np-tv-z])\1$/.test(stem)) forms.push(stem.slice(0, -1));
+  }
+  return forms;
+}
+
+// Resolves to { word, senses } or null. Throws only when the file can't be loaded.
+async function wordnet(word) {
+  const w = word.trim().toLowerCase();
+  if (!/^[a-z]/.test(w)) return null;
+  const file = await wordnetFile(w[0]);
+  const found = baseForms(w).find(f => f[0] === w[0] && file[f]);
+  return found ? { word: found, senses: file[found] } : null;
+}
+
+// In the same shape as the Free Dictionary's answer, so everything else reads either.
+function wordnetEntries({ word, senses }) {
+  const meanings = new Map();
+  for (const [p, definition, example = '', synonyms = [], antonyms = []] of senses) {
+    const partOfSpeech = WORDNET_POS[p];
+    if (!meanings.has(partOfSpeech)) meanings.set(partOfSpeech, { partOfSpeech, definitions: [], synonyms: [], antonyms: [] });
+    meanings.get(partOfSpeech).definitions.push({ definition, example, synonyms, antonyms });
+  }
+  return [{ word, phonetics: [], meanings: [...meanings.values()], sourceUrls: [WORDNET_SOURCE] }];
+}
+
+// The Free Dictionary often has few synonyms and antonyms, so WordNet's are added to its own.
+function withWordnet(entries, found) {
+  if (!found) return entries;
+  const extra = wordnetEntries(found)[0].meanings;
+  const merged = structuredClone(entries);
+  for (const m of merged.flatMap(e => e.meanings || [])) {
+    const more = extra.find(x => x.partOfSpeech === m.partOfSpeech);
+    if (!more) continue;
+    const all = more.definitions;
+    m.synonyms = [...new Set([...(m.synonyms || []), ...all.flatMap(d => d.synonyms)])];
+    m.antonyms = [...new Set([...(m.antonyms || []), ...all.flatMap(d => d.antonyms)])];
+  }
+  merged[0].sourceUrls = [...(merged[0].sourceUrls || []), WORDNET_SOURCE];
+  return merged;
+}
+
+async function lookupOnline(key) {
+  const url = API + encodeURIComponent(key);
+  const res = await fetch(url).catch(() => new Promise(r => setTimeout(r, 700)).then(() => fetch(url)));
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`The dictionary service returned an error (${res.status}).`);
+  return res.json();
+}
+
 async function lookup(word) {
   const key = word.trim().toLowerCase();
   if (cache.has(key)) return cache.get(key);
-  const url = API + encodeURIComponent(key);
-  const res = await fetch(url).catch(() => new Promise(r => setTimeout(r, 700)).then(() => fetch(url)));
-  if (res.status === 404) {
-    cache.set(key, null);
-    return null;
+  const offline = wordnet(key).catch(() => null);
+  let online;
+  try {
+    online = await lookupOnline(key);
+  } catch (err) {
+    // Offline or the service is down: WordNet answers, but the next lookup tries online again.
+    const found = await offline;
+    if (found) return wordnetEntries(found);
+    if (err instanceof TypeError) throw new Error("You're offline, and this word isn't in the saved dictionary. Try its simplest form, like child for children.");
+    throw err;
   }
-  if (!res.ok) throw new Error(`The dictionary service returned an error (${res.status}).`);
-  const data = await res.json();
+  const found = await offline;
+  const data = online ? withWordnet(online, found) : found ? wordnetEntries(found) : null;
   cache.set(key, data);
   return data;
 }
+
+// Saves the whole dictionary for offline use, once, a little after the app opens.
+function saveDictionary() {
+  if (navigator.connection?.saveData || store.get('dictSaved', 0) === DATA_VERSION) return;
+  const letters = [...'abcdefghijklmnopqrstuvwxyz'];
+  letters.reduce((p, l) => p.then(() => fetch(`dict/${l}.json?v=${DATA_VERSION}`).then(r => {
+    if (!r.ok) throw new Error(r.status);
+  })), Promise.resolve())
+    .then(() => store.set('dictSaved', DATA_VERSION))
+    .catch(() => {});
+}
+setTimeout(saveDictionary, 8000);
 
 function syllables(word) {
   const w = word.toLowerCase().replace(/[^a-z]/g, '');
@@ -864,7 +955,7 @@ const LIST_BLURBS = {
   mistakes: 'Words you got wrong before',
   custom: 'Typed, pasted or imported',
 };
-const LIST_KEYS = [...Object.keys(WORD_LISTS), 'mistakes', 'custom'];
+const LIST_KEYS = ['discover', ...Object.keys(WORD_LISTS), 'mistakes', 'custom'];
 
 let selectedList = store.get('selectedList', 'misspelled');
 if (!LIST_KEYS.includes(selectedList)) selectedList = 'easy';
@@ -887,7 +978,7 @@ const bankEntry = word => bank.find(b => bankKey(b.word) === bankKey(word));
 
 // Your own meaning and sentence win; built-in words fall back to the ones that come with the app.
 function wordInfo(word) {
-  const mine = bankEntry(word);
+  const mine = bankEntry(word) || discoverItem(word);
   const built = WORD_INFO[word.toLowerCase()];
   if (mine?.meaning || mine?.example || !built) return mine;
   return { meaning: built[0], example: built[1] };
@@ -963,7 +1054,7 @@ function voiceState(b) {
 
 // Kept out of dictations, unless this device can't make voices at all.
 const voiceWaiting = word => {
-  const b = bankEntry(word);
+  const b = bankEntry(word) || discoverItem(word);
   return Boolean(b) && !maker.failed && ['waiting', 'making'].includes(voiceState(b));
 };
 
@@ -1022,8 +1113,9 @@ function sendJob(job) {
   return true;
 }
 
+// Your own words first, then the next Discover words, then Discover words in My mistakes.
 function nextClip() {
-  for (const b of bank) {
+  for (const b of [...bank, ...discover.queue.filter(d => !discover.done.has(d.word)), ...discover.kept]) {
     if (!b.voice) continue;
     const clip = clipsFor(b).find(c => !madeClips.has(c.key));
     if (clip) return { ...clip, word: bankKey(b.word) };
@@ -1053,7 +1145,7 @@ function testPiper() {
 
 // Drops recordings of words you deleted or changed, and of voices you no longer use.
 function tidyClips() {
-  const keep = new Set(bank.flatMap(b => clipsFor(b).map(c => c.key)));
+  const keep = new Set([...bank, ...discover.queue, ...discover.kept].flatMap(b => clipsFor(b).map(c => c.key)));
   const stale = [...madeClips].filter(k => !keep.has(k));
   if (!stale.length) return;
   stale.forEach(k => { madeClips.delete(k); madeUrls.delete(k); });
@@ -1067,6 +1159,7 @@ clipStore('readonly', s => s.getAllKeys())
     clipsLoaded = true;
     tidyClips();
     makeVoices();
+    refillDiscover();
   });
 
 const VOICE_BADGES = {
@@ -1111,6 +1204,7 @@ function renderVoiceStatus() {
   }
   card.innerHTML = html;
   card.hidden = !html;
+  renderDiscover();
   const note = $('#piper-note');
   if (note) note.textContent = dl && dl.total && dl.loaded < dl.total
     ? `Downloading ${piperName()}: ${MB(dl.loaded)} of ${MB(dl.total)} MB\u2026`
@@ -1173,13 +1267,185 @@ $('#piper-test').addEventListener('click', async () => {
   makeVoices();
 });
 
+/* ---------- Discover new words ---------- */
+
+// The next words of your level, each with WordNet's meaning and example so all four of its
+// Piper recordings are made before the quiz. A word you've answered isn't picked again; if it
+// was wrong it lives on in My mistakes, and its recordings are kept until you get it right.
+const DISCOVER_LEVELS = { easy: 'Easy', medium: 'Medium', hard: 'Hard', expert: 'Expert' };
+// The build keeps these out of the quizzes, so the card can show them without spoiling one.
+const DISCOVER_SAMPLES = {
+  easy: 'climate, quality, governor',
+  medium: 'volcano, intrinsic, knowledgeable',
+  hard: 'threadbare, scythe, torpor',
+  expert: 'pugnacious, haberdashery, nincompoop',
+};
+const DISCOVER_AHEAD = 20;
+const discover = {
+  lists: null,
+  loading: null,
+  refilling: false,
+  failed: false,
+  level: DISCOVER_LEVELS[store.get('discoverLevel', '')] ? store.get('discoverLevel', '') : 'medium',
+  done: new Set(store.get('discoverDone', [])),
+  queue: store.get('discoverQueue', []),
+  kept: store.get('discoverKept', []),
+};
+const saveDiscover = () => {
+  store.set('discoverDone', [...discover.done]);
+  store.set('discoverQueue', discover.queue);
+  store.set('discoverKept', discover.kept);
+};
+const discoverItem = word => {
+  const w = bankKey(word);
+  return discover.queue.find(d => d.word === w) || discover.kept.find(d => d.word === w);
+};
+const discoverWords = () => discover.queue.filter(d => !discover.done.has(d.word)).map(d => d.word);
+
+function loadDiscover() {
+  if (discover.lists) return Promise.resolve(discover.lists);
+  discover.loading ||= fetch(`discover.json?v=${DATA_VERSION}`)
+    .then(r => (r.ok ? r.json() : Promise.reject(new Error(r.status))))
+    .then(lists => {
+      discover.lists = lists;
+      discover.failed = false;
+      return lists;
+    })
+    .catch(err => {
+      discover.failed = true;
+      throw err;
+    })
+    .finally(() => { discover.loading = null; });
+  return discover.loading;
+}
+
+const capitalise = s => s.charAt(0).toUpperCase() + s.slice(1);
+
+function discoverEntry({ word, senses }) {
+  const [pos, def, example] = senses[0];
+  const other = senses.find(s => s[0] === pos && s[2]);
+  return { word, meaning: capitalise(def), example: example || other?.[2] || '', voice: true };
+}
+
+// Clears out answered words, then tops the queue back up to DISCOVER_AHEAD.
+async function refillDiscover() {
+  if (!store.get('discoverOn', false) || discover.refilling) return;
+  discover.refilling = true;
+  const mistakes = new Set(store.get('mistakes', []));
+  const answered = discover.queue.filter(d => discover.done.has(d.word));
+  discover.kept = [...discover.kept, ...answered].filter(d => mistakes.has(d.word));
+  discover.queue = discover.queue.filter(d => !discover.done.has(d.word));
+  saveDiscover();
+  renderDiscover();
+  const level = discover.level;
+  try {
+    const lists = await loadDiscover();
+    const have = new Set(discover.queue.map(d => d.word));
+    for (const word of lists[level]) {
+      if (discover.queue.length >= DISCOVER_AHEAD || discover.level !== level) break;
+      if (have.has(word) || discover.done.has(word) || mistakes.has(word) || bankEntry(word)) continue;
+      const found = await wordnet(word);
+      if (found?.word === word && discover.level === level) discover.queue.push(discoverEntry(found));
+    }
+  } catch {
+    // Offline before the lists or that part of the dictionary were saved; the card says so.
+  }
+  discover.refilling = false;
+  saveDiscover();
+  tidyClips();
+  renderLists();
+  makeVoices();
+}
+
+function setDiscoverLevel(level) {
+  discover.level = level;
+  store.set('discoverLevel', level);
+  // Words you haven't answered go back in their level's list for next time.
+  discover.queue = [];
+  saveDiscover();
+  tidyClips();
+  renderLists();
+  refillDiscover();
+}
+
+function discoverAnswered(word) {
+  const item = discoverItem(word);
+  if (!item) return;
+  discover.done.add(item.word);
+  saveDiscover();
+}
+
+function discoverCard(on) {
+  const { lists, level } = discover;
+  const fmt = n => n.toLocaleString('en-GB');
+  const levels = Object.entries(DISCOVER_LEVELS).map(([key, label]) => `<button type="button" class="dc-level${key === level ? ' active' : ''}" data-level="${key}" aria-pressed="${key === level}">
+      <b>${label}</b>${lists ? `<small>${fmt(lists[key].length)}</small>` : ''}
+    </button>`).join('');
+  let progress = '';
+  if (lists) {
+    const list = lists[level];
+    const mistakes = new Set(store.get('mistakes', []));
+    const practised = list.filter(w => discover.done.has(w));
+    const wrong = practised.filter(w => mistakes.has(w)).length;
+    const pct = practised.length ? Math.max(1.5, (practised.length / list.length) * 100) : 0;
+    progress = `<span class="dc-progress">
+        <span><b>${fmt(practised.length)}</b> of ${fmt(list.length)} practised</span>
+        <span>${practised.length ? (wrong ? `${wrong} in My mistakes` : 'None wrong so far') : 'Not started'}</span>
+      </span>
+      <span class="dc-bar"><i style="width:${pct}%"></i></span>`;
+  }
+  const total = lists ? Object.values(lists).reduce((n, l) => n + l.length, 0) : 0;
+  return `<div class="list-card discover${on ? ' active' : ''}" data-list="discover" role="radio" aria-checked="${on}" tabindex="0">
+      <span class="list-name">Discover new words <i class="dc-new">New</i></span>
+      <span class="list-blurb">${total ? `${fmt(total)} words` : 'Thousands of words'} from the dictionary. Every session brings words you haven't practised yet.</span>
+      <span class="dc-levels" role="group" aria-label="Level">${levels}</span>
+      <span class="dc-like">Words like ${DISCOVER_SAMPLES[level]}</span>
+      ${progress}
+      <span class="dc-voice" hidden></span>
+    </div>`;
+}
+
+// The line at the bottom of the card about the next words and their voices.
+function renderDiscover() {
+  const el = $('#list-grid .dc-voice');
+  if (!el) return;
+  const items = discover.queue.filter(d => !discover.done.has(d.word));
+  const ready = items.filter(d => voiceState(d) === 'ready').length;
+  const dl = maker.download;
+  let text = '';
+  let cls = 'busy';
+  if (!store.get('discoverOn', false)) {
+    text = '';
+  } else if (!items.length && discover.failed) {
+    text = 'Connect to the internet once to get the words. After that they work offline.';
+    cls = 'warn';
+  } else if (!items.length) {
+    text = 'Picking your next words\u2026';
+  } else if (maker.failed) {
+    text = `The next ${plural(items.length, 'word')} use your phone's voice here.`;
+    cls = 'warn';
+  } else if (dl && dl.total && dl.loaded < dl.total) {
+    text = `Getting the ${piperName()} voice ready, ${MB(dl.loaded)} of ${MB(dl.total)} MB. This happens once.`;
+  } else if (ready < items.length) {
+    text = `Getting voices ready for the next ${plural(items.length, 'word')}. ${ready} of ${items.length} done.`;
+  } else {
+    text = `Voices ready for the next ${plural(items.length, 'word')}`;
+    cls = 'ok';
+  }
+  el.hidden = !text;
+  el.className = `dc-voice ${cls}`;
+  el.textContent = text;
+}
+
 function listLabel(key) {
+  if (key === 'discover') return `Discover new words \u00b7 ${DISCOVER_LEVELS[discover.level]}`;
   if (key === 'mistakes') return 'My mistakes';
   if (key === 'custom') return 'My own words';
   return WORD_LISTS[key].label;
 }
 
 function listWords(key) {
+  if (key === 'discover') return discoverWords();
   if (key === 'custom') return bank.map(b => b.word);
   if (key === 'mistakes') return store.get('mistakes', []);
   return WORD_LISTS[key].words.slice();
@@ -1192,10 +1458,17 @@ function renderHero() {
   const take = selectedCount ? Math.min(selectedCount, n) : n;
   $('#hero-title').textContent = listLabel(selectedList);
   const later = waiting ? ` ${plural(waiting, 'word')} ${waiting === 1 ? 'is' : 'are'} still getting ${waiting === 1 ? 'its' : 'their'} voice and will join when ready.` : '';
+  const isDiscover = selectedList === 'discover';
+  $('#shuffle').closest('label').hidden = isDiscover;
   if (n) {
-    $('#hero-sub').textContent = `${plural(take, 'word')}${$('#shuffle').checked ? ', shuffled' : ''}. Hear each word, type it, then study it.${later}`;
+    const what = isDiscover ? plural(take, 'new word') : `${plural(take, 'word')}${$('#shuffle').checked ? ', shuffled' : ''}`;
+    $('#hero-sub').textContent = `${what}. Hear each word, type it, then study it.${later}`;
   } else if (waiting) {
-    $('#hero-sub').textContent = `Your words are getting their natural voice. They'll be ready in a moment.`;
+    $('#hero-sub').textContent = `${isDiscover ? 'The new words are' : 'Your words are'} getting their natural voice. They'll be ready in a moment.`;
+  } else if (isDiscover) {
+    $('#hero-sub').textContent = discover.failed && !discover.refilling
+      ? 'Connect to the internet once to get the new words.'
+      : 'Picking your next words\u2026';
   } else {
     $('#hero-sub').textContent = selectedList === 'mistakes'
       ? 'No saved mistakes yet. Pick another list.'
@@ -1204,7 +1477,7 @@ function renderHero() {
 }
 
 function renderLists() {
-  $('#list-grid').innerHTML = LIST_KEYS.map(key => {
+  $('#list-grid').innerHTML = discoverCard(selectedList === 'discover') + LIST_KEYS.filter(key => key !== 'discover').map(key => {
     const n = listWords(key).length;
     const on = key === selectedList;
     return `<button type="button" class="list-card${on ? ' active' : ''}" data-list="${key}" role="radio" aria-checked="${on}">
@@ -1213,6 +1486,7 @@ function renderLists() {
       <span class="list-count">${plural(n, 'word')}</span>
     </button>`;
   }).join('');
+  renderDiscover();
   renderBank();
   renderHero();
 }
@@ -1239,11 +1513,22 @@ $('#list-grid').addEventListener('click', e => {
   selectedList = b.dataset.list;
   store.set('selectedList', selectedList);
   $('#setup-error').textContent = '';
-  renderLists();
+  const level = e.target.closest('[data-level]')?.dataset.level;
+  if (selectedList === 'discover' && !store.get('discoverOn', false)) store.set('discoverOn', true);
+  if (level && level !== discover.level) setDiscoverLevel(level);
+  else renderLists();
+  if (selectedList === 'discover') refillDiscover();
   if (selectedList === 'custom' && !listWords('custom').length) {
     showTab('words');
     showPane('add');
     $('#add-word').focus();
+  }
+});
+
+$('#list-grid').addEventListener('keydown', e => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('div[data-list]')) {
+    e.preventDefault();
+    e.target.click();
   }
 });
 
@@ -1786,6 +2071,7 @@ function openPlay(id) {
   if (!id) {
     exitFullscreen();
     makeVoices();
+    refillDiscover();
   }
 }
 
@@ -1867,7 +2153,8 @@ $('#setup').addEventListener('submit', e => {
   const all = listWords(selectedList);
   let words = all.filter(w => !voiceWaiting(w));
   if (!words.length) {
-    $('#setup-error').textContent = all.length ? 'Your words are still getting their natural voice. They\u2019ll be ready in a moment.'
+    $('#setup-error').textContent = all.length ? 'The words are still getting their natural voice. They\u2019ll be ready in a moment.'
+      : selectedList === 'discover' ? (discover.failed ? 'Connect to the internet once to get the new words.' : 'Your next words are still being picked.')
       : selectedList === 'mistakes' ? 'You have no saved mistakes yet.' : 'Add at least one word first.';
     return;
   }
@@ -2281,6 +2568,7 @@ async function record(word, typed) {
   session.results.push({ word, typed, correct });
   session.checked = true;
   updateMistakes(word, correct);
+  discoverAnswered(word);
 
   renderSegs();
   const last = index + 1 >= session.words.length;
@@ -2557,6 +2845,10 @@ function renderProgress() {
 $('#clear-progress').addEventListener('click', () => {
   if (!confirm('Clear all saved progress, mistakes and history?')) return;
   ['history', 'mistakes', 'recent'].forEach(k => localStorage.removeItem(k));
+  discover.done.clear();
+  discover.kept = [];
+  saveDiscover();
+  tidyClips();
   renderProgress();
   renderRecent();
   renderHome();

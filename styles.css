@@ -571,6 +571,26 @@ textarea { resize: vertical; margin-top: .9rem; }
 .list-blurb { color: var(--muted); font-size: .8rem; line-height: 1.35; margin-top: .15rem; }
 .list-count { margin-top: auto; padding-top: .45rem; font-size: .74rem; font-weight: 600; color: var(--accent); }
 
+/* Discover new words */
+.list-card.discover { grid-column: 1 / -1; }
+.dc-new { margin-left: .4rem; padding: .1rem .45rem; border-radius: 99px; background: color-mix(in srgb, var(--accent-2) 16%, transparent); color: var(--accent-2); font-size: .62rem; font-weight: 700; font-style: normal; letter-spacing: .04em; text-transform: uppercase; vertical-align: .12em; }
+.dc-levels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; margin-top: .7rem; padding: 3px; border-radius: 12px; background: var(--surface); }
+.dc-level { display: grid; gap: 1px; padding: .4rem .15rem; border: 0; border-radius: 9px; background: transparent; color: var(--text); font: inherit; text-align: center; cursor: pointer; }
+.dc-level b { font-size: .8rem; font-weight: 600; }
+.dc-level small { font-size: .64rem; opacity: .6; }
+.dc-level.active { background: var(--grad); color: var(--on-grad); }
+.dc-level.active small { opacity: .75; }
+.dc-like { margin-top: .45rem; font-size: .72rem; color: var(--muted); }
+.dc-progress { display: flex; justify-content: space-between; gap: .5rem; margin-top: .7rem; font-size: .74rem; color: var(--muted); }
+.dc-progress b { color: var(--text); font-weight: 600; }
+.dc-bar { display: block; height: 5px; margin-top: .3rem; border-radius: 3px; background: var(--surface); overflow: hidden; }
+.dc-bar i { display: block; height: 100%; border-radius: 3px; background: var(--grad); }
+.dc-voice { margin-top: .65rem; padding: .45rem .6rem; border-radius: 10px; font-size: .74rem; line-height: 1.4; }
+.dc-voice.busy { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.dc-voice.ok { background: color-mix(in srgb, var(--ok) 10%, transparent); }
+.dc-voice.ok::before { content: "\2713"; margin-right: .4rem; color: var(--ok); font-weight: 800; }
+.dc-voice.warn { background: var(--surface); color: var(--muted); }
+
 .options {
   display: grid;
   gap: 1rem;
