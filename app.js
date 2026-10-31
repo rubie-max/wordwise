@@ -1147,9 +1147,24 @@ function nextClip() {
 // A Discover quiz keeps going while its next words get their voice.
 const discoverPlaying = () => session.discover && !$('#session').hidden;
 
+// During a Discover quiz a phone can lag if a voice is being made just as you check a word or the
+// next one starts, so voices are only made while you're spelling (or waiting), and only when
+// fewer than 4 words are ready.
+function quizBusy() {
+  const state = $('#session').dataset.state;
+  if (state === 'wait') return false;
+  if (!['listen', 'typing'].includes(state) || Date.now() - session.askedAt < 1500) return true;
+  return discoverWords().filter(w => !voiceWaiting(w)).length > 4;
+}
+
 // Makes the next missing recording. Nothing new starts while another dictation or a summary is open.
 function makeVoices() {
   const paused = document.body.classList.contains('in-play') && !discoverPlaying();
+  if (!maker.job && !paused && discoverPlaying() && quizBusy()) {
+    clearTimeout(maker.retry);
+    maker.retry = setTimeout(makeVoices, 500);
+    return;
+  }
   if (maker.job || maker.testing || maker.failed || !clipsLoaded || paused) return renderVoiceStatus();
   const next = nextClip();
   if (next) sendJob(next);
