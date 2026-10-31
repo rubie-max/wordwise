@@ -306,9 +306,34 @@ for (const [key, [meaning, example]] of Object.entries(WORD_INFO)) {
 }
 const recordingFor = text => RECORDINGS.get(text.replace(/^"|"$/g, '')) || RECORDINGS.get(text.toLowerCase()) || '';
 
+// Clips play through Web Audio, where stopping is instant and leaves nothing queued; an <audio>
+// element on some phones keeps a moment of the old clip and plays it before the next one. Away
+// from 1x the element is still used, because only it can change speed without changing pitch.
 const voiceAudio = new Audio();
 voiceAudio.preservesPitch = true;
+if (navigator.audioSession) navigator.audioSession.type = 'playback';
+let voiceNode = null;
+const clipBuffers = new Map();
 const recordingUrls = new Map();
+
+function clipBuffer(ctx, url) {
+  if (!clipBuffers.has(url)) {
+    const buffer = fetch(url)
+      .then(r => r.arrayBuffer())
+      .then(data => new Promise((resolve, reject) => ctx.decodeAudioData(data, resolve, reject)));
+    buffer.catch(() => clipBuffers.delete(url));
+    clipBuffers.set(url, buffer);
+    if (clipBuffers.size > 80) clipBuffers.delete(clipBuffers.keys().next().value);
+  }
+  return clipBuffers.get(url);
+}
+
+// Everything that's about to say a word. Moving on cancels them along with what's playing.
+const speechTimers = new Set();
+function sayLater(fn, ms) {
+  const t = setTimeout(() => { speechTimers.delete(t); fn(); }, ms);
+  speechTimers.add(t);
+}
 
 // Fetched whole rather than streamed, so the service worker can keep them for offline use.
 function fetchRecording(name) {
@@ -322,9 +347,14 @@ function fetchRecording(name) {
   return recordingUrls.get(name);
 }
 
-// Some phones keep a moment of the old clip buffered and play it when the next one starts,
-// so stopping also empties the player.
 function stopVoice() {
+  if (voiceNode) {
+    const node = voiceNode;
+    voiceNode = null;
+    node.onended = null;
+    try { node.stop(); } catch {}
+    node.disconnect();
+  }
   voiceAudio.pause();
   if (voiceAudio.getAttribute('src')) {
     voiceAudio.removeAttribute('src');
@@ -341,16 +371,35 @@ function recordingUrl(text, slow) {
 }
 
 function playRecording(source, text, rate, id) {
+  const speed = Math.min(2, Math.max(0.5, +$('#rate').value / 0.9));
+  const ctx = Math.abs(speed - 1) < 0.01 ? audioCtx() : null;
   source
-    .then(url => {
-      if (id !== speakId) return;
-      voiceAudio.src = url;
-      voiceAudio.defaultPlaybackRate = voiceAudio.playbackRate = Math.min(2, Math.max(0.5, +$('#rate').value / 0.9));
-      voiceAudio.onplaying = () => { if (id === speakId) setSpeaking(true); };
-      voiceAudio.onended = voiceAudio.onpause = () => { if (id === speakId) setSpeaking(false); };
-      return voiceAudio.play();
-    })
+    .then(url => (ctx && ctx.state === 'running' ? playBuffer(ctx, url, id) : playElement(url, speed, id)))
     .catch(() => { if (id === speakId && canSpeak) speakDevice(text, rate, id); });
+}
+
+async function playBuffer(ctx, url, id) {
+  const buffer = await clipBuffer(ctx, url);
+  if (id !== speakId) return;
+  const node = ctx.createBufferSource();
+  node.buffer = buffer;
+  node.connect(ctx.destination);
+  node.onended = () => {
+    if (voiceNode === node) voiceNode = null;
+    if (id === speakId) setSpeaking(false);
+  };
+  voiceNode = node;
+  node.start();
+  setSpeaking(true);
+}
+
+function playElement(url, speed, id) {
+  if (id !== speakId) return undefined;
+  voiceAudio.src = url;
+  voiceAudio.defaultPlaybackRate = voiceAudio.playbackRate = speed;
+  voiceAudio.onplaying = () => { if (id === speakId) setSpeaking(true); };
+  voiceAudio.onended = voiceAudio.onpause = () => { if (id === speakId) setSpeaking(false); };
+  return voiceAudio.play();
 }
 
 function speakDevice(text, rate, id) {
@@ -378,6 +427,8 @@ const speakSlow = word => speak(word, slowRate(), true);
 const spellRate = () => +$('#rate').value * 0.95;
 
 function stopSpeech() {
+  speechTimers.forEach(clearTimeout);
+  speechTimers.clear();
   speakId++;
   setSpeaking(false);
   stopVoice();
@@ -2321,11 +2372,11 @@ function showWord() {
   session.typed = '';
   session.askedAt = Date.now();
   renderTyped();
-  setTimeout(() => { if (current() === word && !session.checked) speak(word); }, 300);
+  sayLater(() => { if (current() === word && !session.checked) speak(word); }, 300);
   updateHints(word);
   const upcoming = session.words[session.index + 1];
   if (upcoming) lookup(upcoming).catch(() => {});
-  if (upcoming) recordingUrl(upcoming)?.catch(() => {});
+  if (upcoming) recordingUrl(upcoming)?.then(url => sfx.ctx && clipBuffer(sfx.ctx, url)).catch(() => {});
 }
 
 // Sentence and Meaning only show when there is something for them to read.
@@ -2697,7 +2748,7 @@ async function record(word, typed) {
   if (store.get('sayAfterCheck', true)) {
     // Waits for the longest chime (the streak one) so the word never plays over it.
     const wait = soundPrefs().sfx ? 700 : 150;
-    setTimeout(() => { if (session.index === index && session.checked && !$('#session').hidden) speak(word); }, wait);
+    sayLater(() => { if (session.index === index && session.checked && !$('#session').hidden) speak(word); }, wait);
   }
 
   let entries = null;
