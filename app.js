@@ -322,8 +322,14 @@ function fetchRecording(name) {
   return recordingUrls.get(name);
 }
 
+// Some phones keep a moment of the old clip buffered and play it when the next one starts,
+// so stopping also empties the player.
 function stopVoice() {
-  if (!voiceAudio.paused) voiceAudio.pause();
+  voiceAudio.pause();
+  if (voiceAudio.getAttribute('src')) {
+    voiceAudio.removeAttribute('src');
+    voiceAudio.load();
+  }
 }
 
 // A promise of a playable URL, or null when nothing has been recorded or made for this text.
