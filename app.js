@@ -2684,6 +2684,9 @@ async function record(word, typed) {
 
 function next() {
   if (!session.checked || $('#session').dataset.state === 'wait') return;
+  // The last word may still be being said, or about to be, so it can't carry over to the next.
+  stopLetters();
+  stopSpeech();
   session.index++;
   if (session.discover) topUpSession();
   if (session.index < session.words.length) showWord();
