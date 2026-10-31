@@ -585,12 +585,6 @@ textarea { resize: vertical; margin-top: .9rem; }
 .dc-progress b { color: var(--text); font-weight: 600; }
 .dc-bar { display: block; height: 5px; margin-top: .3rem; border-radius: 3px; background: var(--surface); overflow: hidden; }
 .dc-bar i { display: block; height: 100%; border-radius: 3px; background: var(--grad); }
-.dc-voice { margin-top: .65rem; padding: .45rem .6rem; border-radius: 10px; font-size: .74rem; line-height: 1.4; }
-.dc-voice.busy { background: color-mix(in srgb, var(--accent) 10%, transparent); }
-.dc-voice.ok { background: color-mix(in srgb, var(--ok) 10%, transparent); }
-.dc-voice.ok::before { content: "\2713"; margin-right: .4rem; color: var(--ok); font-weight: 800; }
-.dc-voice.warn { background: var(--surface); color: var(--muted); }
-
 .options {
   display: grid;
   gap: 1rem;
@@ -830,6 +824,39 @@ body.in-play { overflow: hidden; --nav-h: 0px; }
 .segs i.ok { background: var(--grad); box-shadow: 0 0 8px rgb(124 104 255 / .5); }
 .segs i.bad { background: var(--bad); }
 .segs i.now { background: var(--accent-soft); box-shadow: inset 0 0 0 1.5px var(--accent); }
+
+/* Discover: Finish, the running tally and the wait for the next word */
+.finish-btn {
+  justify-self: start;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 13px;
+  border: 1px solid color-mix(in srgb, var(--ok) 50%, transparent);
+  background: color-mix(in srgb, var(--ok) 10%, transparent);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.finish-btn:hover { border-color: var(--ok); }
+.tally { display: flex; justify-content: center; gap: 14px; margin: 12px 0 0; font-size: 12.5px; color: var(--muted); }
+.tally b.ok { color: var(--ok); }
+.tally b.bad { color: var(--bad); }
+.tally + .segs { margin-top: 8px; }
+.wait-screen { flex: 1; min-height: 0; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 0 10px; text-align: center; }
+.play[data-state="wait"] .wait-screen { display: flex; }
+.wait-screen h2 { margin: 0; font-size: 21px; }
+.wait-screen p { margin: -8px 0 0; max-width: 30ch; font-size: 14px; line-height: 1.5; }
+.wait-screen .btn { max-width: 360px; margin-top: 8px; }
+.wait-ring { position: relative; width: 150px; height: 150px; }
+.wait-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.wait-ring circle { fill: none; stroke-width: 8; }
+.wait-ring .track { stroke: var(--surface); }
+.wait-ring .arc { stroke: var(--accent); stroke-linecap: round; stroke-dasharray: 389.6; stroke-dashoffset: 389.6; transition: stroke-dashoffset .3s linear; }
+.wait-ring > div { position: absolute; inset: 0; display: grid; place-content: center; }
+.wait-ring b { font-size: 38px; font-weight: 700; letter-spacing: -.02em; line-height: 1; }
+.wait-ring span { margin-top: 4px; font-size: 12px; color: var(--muted); }
 
 .cap { margin: 0; font-size: 13px; color: var(--muted); }
 .lab { margin: 0 0 8px; font-size: 12px; color: var(--muted); }

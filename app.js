@@ -1001,7 +1001,9 @@ const PIPER_VOICES = {
 const PIPER_DEFAULT = 'en_GB-alba-medium';
 const piperVoice = () => (PIPER_VOICES[store.get('piperVoice', '')] ? store.get('piperVoice', '') : PIPER_DEFAULT);
 const piperName = () => PIPER_VOICES[piperVoice()].split(',')[0];
-const clipKey = (text, slow) => `${piperVoice()}|${slow ? 'slow|' : ''}${String(text).replace(/^"|"$/g, '').trim()}`;
+// Bump CLIP_STYLE when voice-maker.js changes how clips sound, so every clip is made again.
+const CLIP_STYLE = 2;
+const clipKey = (text, slow) => `${piperVoice()}|${CLIP_STYLE}|${slow ? 'slow|' : ''}${String(text).replace(/^"|"$/g, '').trim()}`;
 
 const clipDb = new Promise((resolve, reject) => {
   const req = indexedDB.open('wordwise-voices', 1);
@@ -1060,13 +1062,13 @@ const voiceWaiting = word => {
 
 function startMaker() {
   try {
-    maker.worker = new Worker('voice-maker.js?v=38', { type: 'module' });
+    maker.worker = new Worker(`voice-maker.js?v=${CLIP_STYLE}`, { type: 'module' });
   } catch {
     return voiceFailed("This browser can't make natural voices.");
   }
   maker.worker.onmessage = ({ data }) => {
     if (data.type === 'progress') {
-      maker.download = data;
+      maker.download = { ...data, since: maker.download?.since || performance.now() };
       renderVoiceStatus();
       return;
     }
@@ -1076,7 +1078,10 @@ function startMaker() {
     maker.download = null;
     if (data.type === 'error') return job.test ? job.reject(new Error(data.message)) : voiceFailed(data.message);
     if (job.test) return job.resolve(data.audio);
-    if (!job.key.startsWith(`${piperVoice()}|`)) return makeVoices();
+    // How long a clip takes here, for the countdown while a Discover quiz waits.
+    const took = performance.now() - job.started;
+    if (took < 20000) maker.clipMs = maker.clipMs ? maker.clipMs * 0.7 + took * 0.3 : took;
+    if (!job.key.startsWith(`${piperVoice()}|${CLIP_STYLE}|`)) return makeVoices();
     clipStore('readwrite', s => s.put(data.audio, job.key))
       .then(() => {
         madeClips.add(job.key);
@@ -1108,14 +1113,17 @@ addEventListener('online', () => {
 function sendJob(job) {
   if (!maker.worker) startMaker();
   if (!maker.worker) return false;
-  maker.job = { ...job, id: ++maker.jobs };
+  maker.job = { ...job, id: ++maker.jobs, started: performance.now() };
   maker.worker.postMessage({ id: maker.job.id, voice: piperVoice(), text: job.text, slow: Boolean(job.slow) });
   return true;
 }
 
 // Your own words first, then the next Discover words, then Discover words in My mistakes.
+// During a Discover quiz its next words come first, since you're waiting on them.
 function nextClip() {
-  for (const b of [...bank, ...discover.queue.filter(d => !discover.done.has(d.word)), ...discover.kept]) {
+  const next = discover.queue.filter(d => !discover.done.has(d.word));
+  const order = discoverPlaying() ? [...next, ...bank, ...discover.kept] : [...bank, ...next, ...discover.kept];
+  for (const b of order) {
     if (!b.voice) continue;
     const clip = clipsFor(b).find(c => !madeClips.has(c.key));
     if (clip) return { ...clip, word: bankKey(b.word) };
@@ -1123,9 +1131,13 @@ function nextClip() {
   return null;
 }
 
-// Makes the next missing recording. Nothing new starts while a dictation or its summary is open.
+// A Discover quiz keeps going while its next words get their voice.
+const discoverPlaying = () => session.discover && !$('#session').hidden;
+
+// Makes the next missing recording. Nothing new starts while another dictation or a summary is open.
 function makeVoices() {
-  if (maker.job || maker.testing || maker.failed || !clipsLoaded || document.body.classList.contains('in-play')) return renderVoiceStatus();
+  const paused = document.body.classList.contains('in-play') && !discoverPlaying();
+  if (maker.job || maker.testing || maker.failed || !clipsLoaded || paused) return renderVoiceStatus();
   const next = nextClip();
   if (next) sendJob(next);
   renderVoiceProgress();
@@ -1204,7 +1216,6 @@ function renderVoiceStatus() {
   }
   card.innerHTML = html;
   card.hidden = !html;
-  renderDiscover();
   const note = $('#piper-note');
   if (note) note.textContent = dl && dl.total && dl.loaded < dl.total
     ? `Downloading ${piperName()}: ${MB(dl.loaded)} of ${MB(dl.total)} MB\u2026`
@@ -1301,6 +1312,7 @@ const discoverItem = word => {
   return discover.queue.find(d => d.word === w) || discover.kept.find(d => d.word === w);
 };
 const discoverWords = () => discover.queue.filter(d => !discover.done.has(d.word)).map(d => d.word);
+const discoverOffline = () => !discoverWords().length && discover.failed && !discover.refilling;
 
 function loadDiscover() {
   if (discover.lists) return Promise.resolve(discover.lists);
@@ -1327,33 +1339,43 @@ function discoverEntry({ word, senses }) {
   return { word, meaning: capitalise(def), example: example || other?.[2] || '', voice: true };
 }
 
-// Clears out answered words, then tops the queue back up to DISCOVER_AHEAD.
+// Clears out answered words, then tops the queue back up to DISCOVER_AHEAD unanswered ones.
+// During a quiz answered words stay, because the result screen still reads their meaning.
 async function refillDiscover() {
   if (!store.get('discoverOn', false) || discover.refilling) return;
   discover.refilling = true;
+  const playing = document.body.classList.contains('in-play');
   const mistakes = new Set(store.get('mistakes', []));
-  const answered = discover.queue.filter(d => discover.done.has(d.word));
-  discover.kept = [...discover.kept, ...answered].filter(d => mistakes.has(d.word));
-  discover.queue = discover.queue.filter(d => !discover.done.has(d.word));
-  saveDiscover();
-  renderDiscover();
+  if (!playing) {
+    const answered = discover.queue.filter(d => discover.done.has(d.word));
+    discover.kept = [...discover.kept, ...answered].filter(d => mistakes.has(d.word));
+    // Built-in words have their own recorded voice, which would mix with Alba reading the meaning.
+    discover.queue = discover.queue.filter(d => !discover.done.has(d.word) && !WORD_INFO[d.word]);
+    saveDiscover();
+  }
   const level = discover.level;
+  let left = discoverWords().length;
   try {
     const lists = await loadDiscover();
     const have = new Set(discover.queue.map(d => d.word));
     for (const word of lists[level]) {
-      if (discover.queue.length >= DISCOVER_AHEAD || discover.level !== level) break;
-      if (have.has(word) || discover.done.has(word) || mistakes.has(word) || bankEntry(word)) continue;
+      if (left >= DISCOVER_AHEAD || discover.level !== level) break;
+      if (have.has(word) || discover.done.has(word) || mistakes.has(word) || bankEntry(word) || WORD_INFO[word]) continue;
       const found = await wordnet(word);
-      if (found?.word === word && discover.level === level) discover.queue.push(discoverEntry(found));
+      if (found?.word === word && discover.level === level) {
+        discover.queue.push(discoverEntry(found));
+        left++;
+      }
     }
   } catch {
-    // Offline before the lists or that part of the dictionary were saved; the card says so.
+    // Offline before the lists or that part of the dictionary were saved.
   }
   discover.refilling = false;
   saveDiscover();
-  tidyClips();
-  renderLists();
+  if (!document.body.classList.contains('in-play')) {
+    tidyClips();
+    renderLists();
+  }
   makeVoices();
 }
 
@@ -1373,6 +1395,7 @@ function discoverAnswered(word) {
   if (!item) return;
   discover.done.add(item.word);
   saveDiscover();
+  if (discoverWords().length < DISCOVER_AHEAD / 2) refillDiscover();
 }
 
 function discoverCard(on) {
@@ -1401,40 +1424,7 @@ function discoverCard(on) {
       <span class="dc-levels" role="group" aria-label="Level">${levels}</span>
       <span class="dc-like">Words like ${DISCOVER_SAMPLES[level]}</span>
       ${progress}
-      <span class="dc-voice" hidden></span>
     </div>`;
-}
-
-// The line at the bottom of the card about the next words and their voices.
-function renderDiscover() {
-  const el = $('#list-grid .dc-voice');
-  if (!el) return;
-  const items = discover.queue.filter(d => !discover.done.has(d.word));
-  const ready = items.filter(d => voiceState(d) === 'ready').length;
-  const dl = maker.download;
-  let text = '';
-  let cls = 'busy';
-  if (!store.get('discoverOn', false)) {
-    text = '';
-  } else if (!items.length && discover.failed) {
-    text = 'Connect to the internet once to get the words. After that they work offline.';
-    cls = 'warn';
-  } else if (!items.length) {
-    text = 'Picking your next words\u2026';
-  } else if (maker.failed) {
-    text = `The next ${plural(items.length, 'word')} use your phone's voice here.`;
-    cls = 'warn';
-  } else if (dl && dl.total && dl.loaded < dl.total) {
-    text = `Getting the ${piperName()} voice ready, ${MB(dl.loaded)} of ${MB(dl.total)} MB. This happens once.`;
-  } else if (ready < items.length) {
-    text = `Getting voices ready for the next ${plural(items.length, 'word')}. ${ready} of ${items.length} done.`;
-  } else {
-    text = `Voices ready for the next ${plural(items.length, 'word')}`;
-    cls = 'ok';
-  }
-  el.hidden = !text;
-  el.className = `dc-voice ${cls}`;
-  el.textContent = text;
 }
 
 function listLabel(key) {
@@ -1459,16 +1449,17 @@ function renderHero() {
   $('#hero-title').textContent = listLabel(selectedList);
   const later = waiting ? ` ${plural(waiting, 'word')} ${waiting === 1 ? 'is' : 'are'} still getting ${waiting === 1 ? 'its' : 'their'} voice and will join when ready.` : '';
   const isDiscover = selectedList === 'discover';
+  // Discover goes on until you tap Finish, and its voices are made out of sight.
   $('#shuffle').closest('label').hidden = isDiscover;
-  if (n) {
-    const what = isDiscover ? plural(take, 'new word') : `${plural(take, 'word')}${$('#shuffle').checked ? ', shuffled' : ''}`;
-    $('#hero-sub').textContent = `${what}. Hear each word, type it, then study it.${later}`;
-  } else if (waiting) {
-    $('#hero-sub').textContent = `${isDiscover ? 'The new words are' : 'Your words are'} getting their natural voice. They'll be ready in a moment.`;
-  } else if (isDiscover) {
-    $('#hero-sub').textContent = discover.failed && !discover.refilling
+  $('#count-pills').closest('.option').hidden = isDiscover;
+  if (isDiscover) {
+    $('#hero-sub').textContent = discoverOffline()
       ? 'Connect to the internet once to get the new words.'
-      : 'Picking your next words\u2026';
+      : 'New words keep coming until you tap Finish. Hear each word, type it, then study it.';
+  } else if (n) {
+    $('#hero-sub').textContent = `${plural(take, 'word')}${$('#shuffle').checked ? ', shuffled' : ''}. Hear each word, type it, then study it.${later}`;
+  } else if (waiting) {
+    $('#hero-sub').textContent = `Your words are getting their natural voice. They'll be ready in a moment.`;
   } else {
     $('#hero-sub').textContent = selectedList === 'mistakes'
       ? 'No saved mistakes yet. Pick another list.'
@@ -1486,7 +1477,6 @@ function renderLists() {
       <span class="list-count">${plural(n, 'word')}</span>
     </button>`;
   }).join('');
-  renderDiscover();
   renderBank();
   renderHero();
 }
@@ -2077,15 +2067,91 @@ function openPlay(id) {
 
 const setState = state => { $('#session').dataset.state = state; };
 
-function startSession(words, label) {
-  Object.assign(session, { words, index: 0, results: [], label, started: Date.now() });
+function startSession(words, label, isDiscover = false) {
+  Object.assign(session, { words, index: 0, results: [], label, started: Date.now(), discover: isDiscover });
   $('#session-list').textContent = label;
+  $('#quit').hidden = isDiscover;
+  $('#finish').hidden = !isDiscover;
   openPlay('session');
   if (store.get('fullscreen', true)) enterFullscreen();
   if (soundPrefs().keyMode === 'say') loadLetterClips();
   sound('start');
-  showWord();
+  if (words.length) showWord();
+  else showWaiting();
+  if (isDiscover) makeVoices();
 }
+
+/* ---------- Discover: waiting for the next word ---------- */
+
+// Adds Discover words whose voice has become ready since the quiz started.
+function topUpSession() {
+  const have = new Set(session.words);
+  for (const w of discoverWords()) if (!have.has(w) && !voiceWaiting(w)) session.words.push(w);
+}
+
+// A rough guess, from how long clips have been taking, at when the next word will be ready.
+function waitEstimate() {
+  const have = new Set(session.words);
+  const nextItem = discover.queue.find(d => !discover.done.has(d.word) && !have.has(d.word));
+  const clipMs = maker.clipMs || 1500;
+  let ms = nextItem ? clipsFor(nextItem).filter(c => !madeClips.has(c.key)).length * clipMs : 4 * clipMs;
+  if (maker.job && !maker.job.test) ms -= Math.min(clipMs * 0.9, performance.now() - maker.job.started);
+  const dl = maker.download;
+  if (dl && dl.total && dl.loaded < dl.total) {
+    const rate = dl.loaded / Math.max(1, performance.now() - dl.since);
+    ms += rate ? (dl.total - dl.loaded) / rate : 60000;
+  }
+  return Math.max(1000, ms);
+}
+
+const WAIT_RING = 2 * Math.PI * 62;
+const waitState = { timer: 0, since: 0 };
+
+function showWaiting() {
+  setState('wait');
+  session.checked = true;
+  $('#progress-text').textContent = `Word ${session.index + 1}`;
+  renderSegs();
+  waitState.since = performance.now();
+  clearInterval(waitState.timer);
+  waitState.timer = setInterval(tickWaiting, 250);
+  tickWaiting();
+}
+
+function tickWaiting() {
+  if ($('#session').hidden || $('#session').dataset.state !== 'wait') {
+    clearInterval(waitState.timer);
+    return;
+  }
+  topUpSession();
+  if (session.index < session.words.length) {
+    clearInterval(waitState.timer);
+    showWord();
+    return;
+  }
+  const dl = maker.download;
+  const first = Boolean(dl && dl.total && dl.loaded < dl.total);
+  const offline = discoverOffline() || (maker.failed && !discoverWords().length);
+  const left = waitEstimate();
+  const gone = performance.now() - waitState.since;
+  const secs = Math.ceil(left / 1000);
+  $('#wait-secs').textContent = offline ? '\u2013' : secs;
+  $('#wait-unit').textContent = offline ? '' : secs === 1 ? 'second' : 'seconds';
+  $('#wait-arc').style.strokeDashoffset = WAIT_RING * (1 - Math.min(0.97, gone / (gone + left)));
+  $('#wait-title').textContent = offline ? 'No new words right now' : first ? 'Getting the voice ready' : 'Next word in a moment';
+  $('#wait-text').textContent = offline ? 'Connect to the internet to get more words.'
+    : first ? 'This only happens the first time, so use Wi-Fi. Your first word starts by itself.'
+    : "You're quicker than the voice. The next word starts by itself.";
+  $('#wait-finish').textContent = session.results.length ? 'Finish and see results' : 'Not now';
+}
+
+function endDiscover() {
+  clearInterval(waitState.timer);
+  if (session.results.length) finish();
+  else showSetup();
+}
+$('#finish').addEventListener('click', endDiscover);
+$('#wait-finish').addEventListener('click', endDiscover);
 
 /* ---------- Full screen ---------- */
 
@@ -2152,9 +2218,17 @@ $('#setup').addEventListener('submit', e => {
   e.preventDefault();
   const all = listWords(selectedList);
   let words = all.filter(w => !voiceWaiting(w));
+  if (selectedList === 'discover') {
+    if (discoverOffline()) {
+      $('#setup-error').textContent = 'Connect to the internet once to get the new words.';
+      return;
+    }
+    $('#setup-error').textContent = '';
+    startSession(words, listLabel(selectedList), true);
+    return;
+  }
   if (!words.length) {
-    $('#setup-error').textContent = all.length ? 'The words are still getting their natural voice. They\u2019ll be ready in a moment.'
-      : selectedList === 'discover' ? (discover.failed ? 'Connect to the internet once to get the new words.' : 'Your next words are still being picked.')
+    $('#setup-error').textContent = all.length ? 'Your words are still getting their natural voice. They\u2019ll be ready in a moment.'
       : selectedList === 'mistakes' ? 'You have no saved mistakes yet.' : 'Add at least one word first.';
     return;
   }
@@ -2164,15 +2238,26 @@ $('#setup').addEventListener('submit', e => {
   startSession(words, listLabel(selectedList));
 });
 
+// A Discover quiz has no set length, so its bar shows the answers so far (the last 30) and the
+// tally above counts them instead.
 function renderSegs() {
   const segs = $('#segs');
-  segs.style.setProperty('--n', session.words.length);
-  segs.classList.toggle('dense', session.words.length > 24);
-  segs.innerHTML = session.words.map((_, i) => {
-    const r = session.results[i];
-    const cls = r ? (r.correct ? 'ok' : 'bad') : i === session.index ? 'now' : '';
-    return `<i class="${cls}"></i>`;
-  }).join('');
+  const { results } = session;
+  const slots = session.discover
+    ? [...results, null].slice(-30).map((r, i, all) => (r ? (r.correct ? 'ok' : 'bad') : i === all.length - 1 ? 'now' : ''))
+    : session.words.map((_, i) => {
+      const r = results[i];
+      return r ? (r.correct ? 'ok' : 'bad') : i === session.index ? 'now' : '';
+    });
+  segs.style.setProperty('--n', session.discover ? Math.max(10, slots.length) : slots.length);
+  segs.classList.toggle('dense', slots.length > 24);
+  segs.innerHTML = slots.map(cls => `<i class="${cls}"></i>`).join('');
+  const tally = $('#tally');
+  tally.hidden = !session.discover;
+  if (session.discover) {
+    const right = results.filter(r => r.correct).length;
+    tally.innerHTML = `<span><b class="ok">${right}</b> right</span><span><b class="bad">${results.length - right}</b> to revise</span>`;
+  }
 }
 
 function renderTyped() {
@@ -2203,7 +2288,7 @@ function checkAnswer() {
 function showWord() {
   session.checked = false;
   const word = current();
-  $('#progress-text').textContent = `Word ${session.index + 1} of ${session.words.length}`;
+  $('#progress-text').textContent = session.discover ? `Word ${session.index + 1}` : `Word ${session.index + 1} of ${session.words.length}`;
   renderSegs();
   session.typed = '';
   session.askedAt = Date.now();
@@ -2571,7 +2656,7 @@ async function record(word, typed) {
   discoverAnswered(word);
 
   renderSegs();
-  const last = index + 1 >= session.words.length;
+  const last = !session.discover && index + 1 >= session.words.length;
   $$('.next-btn').forEach(b => (b.textContent = last ? 'See results' : 'Next word'));
   if (correct) {
     showCorrect(word, secs);
@@ -2598,9 +2683,11 @@ async function record(word, typed) {
 }
 
 function next() {
-  if (!session.checked) return;
+  if (!session.checked || $('#session').dataset.state === 'wait') return;
   session.index++;
+  if (session.discover) topUpSession();
   if (session.index < session.words.length) showWord();
+  else if (session.discover) showWaiting();
   else finish();
 }
 

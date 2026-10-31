@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap">
-  <link rel="stylesheet" href="styles.css?v=40">
+  <link rel="stylesheet" href="styles.css?v=41">
 </head>
 <body class="locked">
   <div id="gate" class="gate">
@@ -492,6 +492,7 @@
         <button id="quit" class="icon-btn" type="button" aria-label="End session" title="End session">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
         </button>
+        <button id="finish" class="finish-btn" type="button" hidden>Finish</button>
         <div class="play-title"><b id="progress-text"></b><span id="session-list"></span></div>
         <div class="play-right">
         <button id="fs-toggle" class="icon-btn fs-btn" type="button" aria-label="Full screen" title="Full screen" aria-pressed="false" hidden>
@@ -505,6 +506,7 @@
         </div>
         </div>
       </div>
+      <p id="tally" class="tally" hidden></p>
       <div id="segs" class="segs"></div>
 
       <!-- Listen and type -->
@@ -623,6 +625,17 @@
           <button id="bad-next" class="btn next-btn" type="button">Next word</button>
         </div>
       </div>
+
+      <!-- Discover: waiting for the next word's voice -->
+      <div class="wait-screen" aria-live="polite">
+        <div class="wait-ring">
+          <svg viewBox="0 0 150 150" aria-hidden="true"><circle class="track" cx="75" cy="75" r="62"/><circle id="wait-arc" class="arc" cx="75" cy="75" r="62"/></svg>
+          <div><b id="wait-secs"></b><span id="wait-unit">seconds</span></div>
+        </div>
+        <h2 id="wait-title">Next word in a moment</h2>
+        <p id="wait-text" class="muted"></p>
+        <button id="wait-finish" class="btn ghost full" type="button">Finish and see results</button>
+      </div>
     </div>
   </div>
 
@@ -688,7 +701,7 @@
     Definitions from the <a href="https://dictionaryapi.dev/" target="_blank" rel="noopener">Free Dictionary API</a> and <a href="https://en-word.net/" target="_blank" rel="noopener">Open English WordNet</a> (CC BY 4.0). Progress is saved only in this browser.
   </footer>
 
-  <script src="words.js?v=40"></script>
-  <script src="app.js?v=40"></script>
+  <script src="words.js?v=41"></script>
+  <script src="app.js?v=41"></script>
 </body>
 </html>

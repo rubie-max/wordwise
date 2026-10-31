@@ -3,8 +3,14 @@ const LIB = 'https://cdn.jsdelivr.net/npm/';
 const PHONEMIZE = `${LIB}@diffusionstudio/piper-wasm@1.0.0/build/piper_phonemize`;
 const MODELS = 'https://huggingface.co/diffusionstudio/piper-voices/resolve/main/';
 const MODEL_CACHE = 'wordwise-voice-models';
-// Matches the built-in slow recordings, which are read at 55% speed.
+// Piper reads a word on its own faster than a person dictating would, so single words are
+// stretched a little more than sentences. Slow matches the built-in slow recordings (55% speed).
+const WORD = 1.3;
+const LINE = 1.1;
 const SLOW = 1.8;
+// Phones often clip the first moment of a sound, so each clip starts and ends with a short silence.
+const LEAD = 0.15;
+const TAIL = 0.2;
 
 let engine = null;
 let engineVoice = '';
@@ -79,6 +85,10 @@ function wav(samples, rate) {
   }
   const rms = voiced ? Math.sqrt(sum / voiced) : 0;
   const gain = rms ? Math.min(0.15 / rms, 0.95 / peak) : 1;
+  const lead = Math.round(LEAD * rate);
+  const padded = new Float32Array(lead + samples.length + Math.round(TAIL * rate));
+  padded.set(samples, lead);
+  samples = padded;
   const view = new DataView(new ArrayBuffer(44 + samples.length * 2));
   const ascii = (at, s) => [...s].forEach((c, i) => view.setUint8(at + i, c.charCodeAt(0)));
   ascii(0, 'RIFF');
@@ -109,7 +119,7 @@ async function make({ voice, text, slow }) {
   const feeds = {
     input: new e.ort.Tensor('int64', ids, [1, ids.length]),
     input_lengths: new e.ort.Tensor('int64', [ids.length]),
-    scales: new e.ort.Tensor('float32', [noise_scale, length_scale * (slow ? SLOW : 1), noise_w]),
+    scales: new e.ort.Tensor('float32', [noise_scale, length_scale * (slow ? SLOW : /\s/.test(text.trim()) ? LINE : WORD), noise_w]),
   };
   if (Object.keys(e.config.speaker_id_map || {}).length) feeds.sid = new e.ort.Tensor('int64', [0]);
   const { output } = await e.session.run(feeds);
