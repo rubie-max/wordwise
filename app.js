@@ -994,11 +994,15 @@ const PIPER_VOICES = {
   'en_GB-alba-medium': 'Alba, Scottish female',
   'en_GB-cori-medium': 'Cori, female',
   'en_GB-jenny_dioco-medium': 'Jenny, female',
-  'en_GB-southern_english_female-low': 'Southern English, female',
   'en_GB-alan-medium': 'Alan, male',
   'en_GB-northern_english_male-medium': 'Northern English, male',
 };
 const PIPER_DEFAULT = 'en_GB-alba-medium';
+// The Southern English voice garbles short words ("move" comes out like "the"), so it isn't
+// offered. Anyone who chose it falls back to Alba, and its download is cleared.
+caches.open('wordwise-voice-models')
+  .then(cache => cache.keys().then(keys => keys.filter(r => r.url.includes('southern_english_female')).forEach(r => cache.delete(r))))
+  .catch(() => {});
 const piperVoice = () => (PIPER_VOICES[store.get('piperVoice', '')] ? store.get('piperVoice', '') : PIPER_DEFAULT);
 const piperName = () => PIPER_VOICES[piperVoice()].split(',')[0];
 // Bump CLIP_STYLE when voice-maker.js changes how clips sound, so every clip is made again.
