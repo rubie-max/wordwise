@@ -30,6 +30,8 @@ self.addEventListener('fetch', event => {
     return;
   }
   if (url.origin !== location.origin) return;
+  // Voice models are large and the voice maker already keeps its own copy.
+  if (url.pathname.includes('/voices/')) return;
   if (isData(url)) {
     event.respondWith(caches.open(DATA).then(cache => cache.match(request).then(hit => hit || fetch(request).then(async response => {
       if (response.ok) {

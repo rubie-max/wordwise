@@ -11,6 +11,15 @@ const SLOW = 1.8;
 // Phones often clip the first moment of a sound, so each clip starts and ends with a short silence.
 const LEAD = 0.15;
 const TAIL = 0.2;
+// Southern English garbles a word said on its own ("move" came out like "the") but says it clearly
+// at the end of a phrase. Its copy of the model, served from here, also reports how many frames
+// each sound lasts, so the word can be cut back out of the phrase. It's steadier with less noise.
+const PHRASE_VOICES = {
+  'en_GB-southern_english_female-low': { model: 'voices/en_GB-southern_english_female-low.onnx', noise: 0.333 },
+};
+const LEAD_IN = 'Now say';
+// Frames kept from before the word so its first sound isn't clipped. More than this picks up "say".
+const CUT_EARLY = 5;
 
 let engine = null;
 let engineVoice = '';
@@ -53,7 +62,8 @@ async function load(voice) {
   ort.env.wasm.wasmPaths = `${LIB}onnxruntime-web@1.18.0/dist/`;
   const path = MODELS + modelPath(voice);
   const config = JSON.parse(await (await download(`${path}.json`)).text());
-  const model = await download(path, (loaded, total) => postMessage({ type: 'progress', loaded, total }));
+  const own = PHRASE_VOICES[voice]?.model;
+  const model = await download(own ? new URL(own, location).href : path, (loaded, total) => postMessage({ type: 'progress', loaded, total }));
   const session = await ort.InferenceSession.create(new Uint8Array(await model.arrayBuffer()));
   return { ort, createPiperPhonemize, config, session };
 }
@@ -114,16 +124,29 @@ async function make({ voice, text, slow }) {
     engine.catch(() => { engine = null; });
   }
   const e = await engine;
-  const ids = await phonemeIds(e, text);
+  const single = !/\s/.test(text.trim());
+  const phrase = single && PHRASE_VOICES[voice] && e.session.outputNames.includes('durations') ? PHRASE_VOICES[voice] : null;
+  const ids = await phonemeIds(e, phrase ? `${LEAD_IN} ${text.trim()}.` : text);
   const { noise_scale, length_scale, noise_w } = e.config.inference;
   const feeds = {
     input: new e.ort.Tensor('int64', ids, [1, ids.length]),
     input_lengths: new e.ort.Tensor('int64', [ids.length]),
-    scales: new e.ort.Tensor('float32', [noise_scale, length_scale * (slow ? SLOW : /\s/.test(text.trim()) ? LINE : WORD), noise_w]),
+    scales: new e.ort.Tensor('float32', [phrase?.noise ?? noise_scale, length_scale * (slow ? SLOW : single ? WORD : LINE), phrase?.noise ?? noise_w]),
   };
   if (Object.keys(e.config.speaker_id_map || {}).length) feeds.sid = new e.ort.Tensor('int64', [0]);
-  const { output } = await e.session.run(feeds);
-  return wav(output.data, e.config.audio.sample_rate);
+  const { output, durations } = await e.session.run(feeds);
+  let samples = output.data;
+  if (phrase) {
+    // The word starts just after the space that follows the lead-in (each sound is followed by a pad).
+    const space = e.config.phoneme_id_map[' '][0];
+    const spaces = ids.flatMap((id, i) => (id === space ? [i] : []));
+    const first = spaces[LEAD_IN.split(' ').length - 1] + 2;
+    const frames = Array.from(durations.data);
+    const hop = samples.length / frames.reduce((a, b) => a + b, 0);
+    const start = frames.slice(0, first).reduce((a, b) => a + b, 0) - CUT_EARLY;
+    samples = samples.slice(Math.max(0, Math.round(start * hop)));
+  }
+  return wav(samples, e.config.audio.sample_rate);
 }
 
 // One line at a time: the model can't run two at once.
