@@ -42,8 +42,9 @@ self.addEventListener('fetch', event => {
     return;
   }
   // Network first so new deploys show up straight away; the cache is only an offline fallback.
+  // GitHub Pages lets browsers reuse files for 10 minutes, so each one is checked with the server.
   event.respondWith(
-    fetch(request)
+    fetch(request, { cache: 'no-cache' })
       .then(response => {
         const copy = response.clone();
         caches.open(CACHE).then(cache => cache.put(request, copy));
