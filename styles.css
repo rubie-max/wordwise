@@ -858,6 +858,45 @@ body.in-play { overflow: hidden; --nav-h: 0px; }
 .wait-ring b { font-size: 38px; font-weight: 700; letter-spacing: -.02em; line-height: 1; }
 .wait-ring span { margin-top: 4px; font-size: 12px; color: var(--muted); }
 
+/* 3, 2, 1 before the first word */
+.count-screen { --tone: var(--accent); flex: 1; min-height: 0; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 26px; text-align: center; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
+.count-screen.go { --tone: var(--accent-2); }
+.play[data-state="count"] .count-screen { display: flex; }
+.play[data-state="count"] .segs, .play[data-state="count"] .tally { visibility: hidden; }
+.count-stage { position: relative; width: 220px; height: 220px; display: grid; place-items: center; }
+.count-ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.count-ring circle { fill: none; stroke-width: 6; stroke-linecap: round; stroke: var(--surface); transition: stroke .25s; }
+.count-ring circle.on { stroke: var(--tone); }
+.count-ripple { position: absolute; width: 140px; height: 140px; border-radius: 50%; border: 2px solid var(--tone); opacity: 0; }
+.count-orb {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: radial-gradient(circle at 35% 30%, #b3a8ff, #7b66ff 55%, #5a45e6);
+  box-shadow: 0 14px 40px rgb(124 104 255 / .5);
+}
+.count-screen.go .count-orb { color: #0d1024; background: radial-gradient(circle at 35% 30%, #b6fff4, #4fe3d0 55%, #23a897); box-shadow: 0 14px 40px rgb(79 227 208 / .4); }
+.count-orb b { font-size: 76px; font-weight: 800; letter-spacing: -.04em; line-height: 1; }
+.count-screen.go .count-orb b { font-size: 50px; }
+.count-text h2 { margin: 0; font-size: 21px; }
+.count-text p { margin: 6px 0 0; font-size: 14px; }
+.count-skip { margin-top: 8px; }
+.count-screen.beat .count-orb { animation: count-beat 1s ease-out; }
+.count-screen.beat .count-orb b { animation: count-pop 1s ease-out forwards; }
+.count-screen.beat .count-ripple { animation: count-ripple 1.1s ease-out forwards; }
+.count-screen.beat .count-ripple.late { animation-delay: .18s; }
+.count-screen.go .count-text { animation: count-rise .35s ease-out; }
+@keyframes count-pop { 0% { transform: scale(1.7); opacity: 0; filter: blur(6px); } 28% { transform: none; opacity: 1; filter: none; } 85% { transform: scale(.96); opacity: 1; } 100% { transform: scale(.9); opacity: .4; } }
+@keyframes count-beat { 0% { transform: scale(.9); } 22% { transform: scale(1.05); } 100% { transform: none; } }
+@keyframes count-ripple { 0% { transform: none; opacity: .55; } 100% { transform: scale(1.75); opacity: 0; } }
+@keyframes count-rise { from { transform: translateY(6px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .count-screen.beat .count-orb, .count-screen.beat .count-orb b, .count-screen.beat .count-ripple, .count-screen.go .count-text { animation: none; }
+}
+
 .cap { margin: 0; font-size: 13px; color: var(--muted); }
 .lab { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
 .lab.spaced { margin-top: 16px; }

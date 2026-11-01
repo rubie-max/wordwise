@@ -1,5 +1,5 @@
 const CACHE = 'wordwise-v2';
-const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'words.js', 'voice-maker.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png'];
+const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'words.js', 'voice-maker.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'countdown.wav'];
 // The voice maker's libraries come from jsDelivr at fixed versions, so a saved copy never goes stale.
 const LIBS = 'wordwise-libs';
 // The dictionary and Discover lists only change when their ?v= does, so they're saved once.

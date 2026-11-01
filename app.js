@@ -156,8 +156,21 @@ function showTab(name) {
   if (name === 'words') renderBank();
   window.scrollTo({ top: 0 });
 }
-$$('.tab').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
-$('#account-toggle').addEventListener('click', () => showTab('settings'));
+$$('.tab').forEach(b => b.addEventListener('click', () => {
+  if (!b.classList.contains('active')) sound('tab');
+  showTab(b.dataset.tab);
+}));
+$('#account-toggle').addEventListener('click', () => { sound('tab'); showTab('settings'); });
+
+// One small click for every switch and option button. The sound effects switch plays its own
+// chime, and the key sound options play the sound they pick.
+document.addEventListener('change', e => {
+  if (e.target.matches('input[type="checkbox"]') && e.target.id !== 'sfx-on') sound('toggle');
+});
+document.addEventListener('click', e => {
+  const option = e.target.closest('[role="radio"]');
+  if (option && !option.closest('#key-pills') && option.getAttribute('aria-checked') !== 'true' && !option.classList.contains('active')) sound('toggle');
+}, true);
 
 /* ---------- Settings ---------- */
 
@@ -485,7 +498,7 @@ function tones(notes, { type = 'triangle', volume = 0.2 } = {}) {
   }
 }
 
-function keyClick(freq) {
+function keyClick(freq, volume = 0.5) {
   const ctx = audioCtx();
   if (!ctx) return;
   if (!sfx.noise) {
@@ -501,7 +514,7 @@ function keyClick(freq) {
   filter.type = 'bandpass';
   filter.frequency.value = freq;
   filter.Q.value = 1.4;
-  gain.gain.value = 0.5;
+  gain.gain.value = volume;
   src.connect(filter).connect(gain).connect(ctx.destination);
   src.start();
 }
@@ -515,6 +528,18 @@ const SOUNDS = {
   complete: () => tones([[523.25, 0, 0.16], [659.25, 0.12, 0.16], [783.99, 0.24, 0.16], [1046.5, 0.36, 0.55]], { volume: 0.18 }),
   perfect: () => tones([[523.25, 0, 0.14], [659.25, 0.1, 0.14], [783.99, 0.2, 0.14], [1046.5, 0.3, 0.2], [1318.51, 0.42, 0.2], [1567.98, 0.54, 0.65]], { volume: 0.17 }),
   goal: () => tones([[1046.5, 0, 0.1], [1318.51, 0.08, 0.1], [1567.98, 0.16, 0.1], [2093, 0.24, 0.4]], { type: 'sine', volume: 0.1 }),
+  tick: () => keyClick(2600, 0.35),
+  tickLast: () => tones([[1318.51, 0, 0.06]], { type: 'sine', volume: 0.07 }),
+  ready: () => tones([[880, 0, 0.08], [1174.66, 0.06, 0.2]], { type: 'sine', volume: 0.1 }),
+  next: () => tones([[523.25, 0, 0.06], [659.25, 0.045, 0.1]], { type: 'sine', volume: 0.08 }),
+  finish: () => tones([[659.25, 0, 0.1], [523.25, 0.08, 0.24]], { volume: 0.12 }),
+  score: () => tones(Array.from({ length: 8 }, (_, i) => [1046.5 + i * 60, i * 0.07, 0.04]), { type: 'sine', volume: 0.05 }),
+  found: () => tones([[783.99, 0, 0.08], [1046.5, 0.05, 0.16]], { volume: 0.1 }),
+  missing: () => tones([[392, 0, 0.1], [349.23, 0.08, 0.18]], { type: 'sine', volume: 0.1 }),
+  added: () => tones([[659.25, 0, 0.08], [880, 0.06, 0.18]], { volume: 0.12 }),
+  removed: () => tones([[440, 0, 0.08], [329.63, 0.06, 0.18]], { type: 'sine', volume: 0.1 }),
+  tab: () => keyClick(1800, 0.3),
+  toggle: () => keyClick(3200, 0.4),
 };
 
 const soundPrefs = () => ({
@@ -568,10 +593,35 @@ function loadLetterClips() {
     .then(buffer => { letterAudio.buffer = buffer; })
     .catch(() => { letterAudio.loading = null; });
 }
+// "Three", "Two", "One", "Go!" in Microsoft's Libby neural voice, as [start, length] in seconds.
+const COUNT_CLIPS = { 3: [0, 0.5094], 2: [0.6594, 0.4589], 1: [1.2683, 0.4807], 0: [1.899, 0.3815] };
+const countAudio = { buffer: null, loading: null };
+
+function loadCountClips() {
+  const ctx = audioCtx();
+  if (!ctx || countAudio.loading) return;
+  countAudio.loading = fetch('countdown.wav?v=1')
+    .then(r => (r.ok ? r.arrayBuffer() : Promise.reject()))
+    .then(data => new Promise((resolve, reject) => ctx.decodeAudioData(data, resolve, reject)))
+    .then(buffer => { countAudio.buffer = buffer; })
+    .catch(() => { countAudio.loading = null; });
+}
+
+function playCountClip(n) {
+  const ctx = sfx.ctx;
+  if (!ctx || !countAudio.buffer || !soundPrefs().sfx) return;
+  const [start, len] = COUNT_CLIPS[n];
+  const src = ctx.createBufferSource();
+  src.buffer = countAudio.buffer;
+  src.connect(ctx.destination);
+  src.start(0, start, len);
+}
+
 // iPhones only let audio start without a tap once it has played during a tap, so the first tap
 // plays a silent clip. After that the words can play when they come up.
 document.addEventListener('pointerdown', () => {
   loadLetterClips();
+  loadCountClips();
   if (voiceAudio.src) return;
   voiceAudio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
   voiceAudio.play().catch(() => {});
@@ -922,8 +972,10 @@ async function search(word) {
     const entries = await lookup(word);
     out.innerHTML = wordCard(word, entries);
     if (entries) addRecent(word.toLowerCase());
+    sound(entries ? 'found' : 'missing');
   } catch (err) {
     out.innerHTML = errorCard(err);
+    sound('missing');
   }
 }
 
@@ -1703,10 +1755,12 @@ $('#bank-list').addEventListener('click', e => {
   const [removed] = bank.splice(i, 1);
   saveBank();
   renderLists();
+  sound('removed');
   toast(`Deleted "${removed.word}"`, {
     label: 'Undo',
     run: () => {
       bank.splice(i, 0, removed);
+      sound('added');
       saveBank();
       renderLists();
       makeVoices();
@@ -1719,6 +1773,7 @@ $('#clear-bank').addEventListener('click', () => {
   bank = [];
   saveBank();
   renderLists();
+  sound('removed');
 });
 
 $('#fill-meanings').addEventListener('click', async () => {
@@ -1802,6 +1857,7 @@ $('#add-form').addEventListener('submit', e => {
     showPane('bank');
     renderLists();
     makeVoices();
+    sound('added');
     toast(`Saved "${word}"`);
     return;
   }
@@ -1815,6 +1871,7 @@ $('#add-form').addEventListener('submit', e => {
     bank.push({ word, meaning, example, voice: true });
     toast(`Added "${word}". Making its voice now.`);
   }
+  sound('added');
   saveBank();
   resetAddForm();
   renderLists();
@@ -2154,11 +2211,53 @@ function startSession(words, label, isDiscover = false) {
   openPlay('session');
   if (store.get('fullscreen', true)) enterFullscreen();
   if (soundPrefs().keyMode === 'say') loadLetterClips();
-  sound('start');
-  if (words.length) showWord();
-  else showWaiting();
+  startCountdown(() => (session.words.length ? showWord() : showWaiting()));
   if (isDiscover) makeVoices();
 }
+
+/* ---------- 3, 2, 1 before the first word ---------- */
+
+const countdown = { timers: [], then: null };
+
+function stopCountdown() {
+  countdown.timers.forEach(clearTimeout);
+  countdown.timers = [];
+  countdown.then = null;
+}
+
+function startCountdown(then) {
+  stopCountdown();
+  loadCountClips();
+  countdown.then = then;
+  // Stops typing, Skip and Check until the first word is up.
+  session.checked = true;
+  setState('count');
+  $('#progress-text').textContent = 'Get ready';
+  renderSegs();
+  countBeat(3);
+  [2, 1, 0].forEach((n, i) => countdown.timers.push(setTimeout(() => countBeat(n), (i + 1) * 1000)));
+  countdown.timers.push(setTimeout(endCountdown, 3600));
+}
+
+function countBeat(n) {
+  const screen = $('#count-screen');
+  screen.classList.toggle('go', !n);
+  $('#count-num').textContent = n || 'Go!';
+  $$('#count-screen .count-ring circle').forEach((c, i) => c.classList.toggle('on', i < 4 - n));
+  $('#count-title').textContent = n ? 'Get ready to listen' : 'Listen carefully';
+  $('#count-sub').textContent = n ? 'Turn your sound up' : 'Here comes your first word';
+  screen.classList.remove('beat');
+  void screen.offsetWidth;
+  screen.classList.add('beat');
+  playCountClip(n);
+}
+
+function endCountdown() {
+  const then = countdown.then;
+  stopCountdown();
+  if (then && !$('#session').hidden && $('#session').dataset.state === 'count') then();
+}
+$('#count-screen').addEventListener('click', endCountdown);
 
 /* ---------- Discover: waiting for the next word ---------- */
 
@@ -2184,7 +2283,7 @@ function waitEstimate() {
 }
 
 const WAIT_RING = 2 * Math.PI * 62;
-const waitState = { timer: 0, since: 0 };
+const waitState = { timer: 0, since: 0, shown: 0 };
 
 function showWaiting() {
   setState('wait');
@@ -2192,6 +2291,7 @@ function showWaiting() {
   $('#progress-text').textContent = `Word ${session.index + 1}`;
   renderSegs();
   waitState.since = performance.now();
+  waitState.shown = 0;
   clearInterval(waitState.timer);
   waitState.timer = setInterval(tickWaiting, 250);
   tickWaiting();
@@ -2205,6 +2305,7 @@ function tickWaiting() {
   topUpSession();
   if (session.index < session.words.length) {
     clearInterval(waitState.timer);
+    sound('ready');
     showWord();
     return;
   }
@@ -2214,6 +2315,9 @@ function tickWaiting() {
   const left = waitEstimate();
   const gone = performance.now() - waitState.since;
   const secs = Math.ceil(left / 1000);
+  // The guess can creep back up, so it only ticks when the number goes down.
+  if (!offline && waitState.shown && secs < waitState.shown) sound(secs <= 3 ? 'tickLast' : 'tick');
+  waitState.shown = offline ? 0 : secs;
   $('#wait-secs').textContent = offline ? '\u2013' : secs;
   $('#wait-unit').textContent = offline ? '' : secs === 1 ? 'second' : 'seconds';
   $('#wait-arc').style.strokeDashoffset = WAIT_RING * (1 - Math.min(0.97, gone / (gone + left)));
@@ -2224,13 +2328,8 @@ function tickWaiting() {
   $('#wait-finish').textContent = session.results.length ? 'Finish and see results' : 'Not now';
 }
 
-function endDiscover() {
-  clearInterval(waitState.timer);
-  if (session.results.length) finish();
-  else showSetup();
-}
-$('#finish').addEventListener('click', endDiscover);
-$('#wait-finish').addEventListener('click', endDiscover);
+$('#finish').addEventListener('click', endEarly);
+$('#wait-finish').addEventListener('click', endEarly);
 
 /* ---------- Full screen ---------- */
 
@@ -2762,12 +2861,13 @@ async function record(word, typed) {
 }
 
 function next() {
-  if (!session.checked || $('#session').dataset.state === 'wait') return;
+  if (!session.checked || ['wait', 'count'].includes($('#session').dataset.state)) return;
   // The last word may still be being said, or about to be, so it can't carry over to the next.
   stopLetters();
   stopSpeech();
   session.index++;
   if (session.discover) topUpSession();
+  if (session.index < session.words.length || session.discover) sound('next');
   if (session.index < session.words.length) showWord();
   else if (session.discover) showWaiting();
   else finish();
@@ -2791,12 +2891,17 @@ $('#ok-card').addEventListener('click', e => {
 });
 $$('.enter-hint').forEach(el => (el.hidden = !finePointer));
 
-$('#quit').addEventListener('click', () => {
-  if (session.results.length) finish();
+$('#quit').addEventListener('click', endEarly);
+
+function endEarly() {
+  clearInterval(waitState.timer);
+  sound('finish');
+  if (session.results.length) finish(true);
   else showSetup();
-});
+}
 
 function showSetup() {
+  stopCountdown();
   if (canSpeak) speechSynthesis.cancel();
   stopLetters();
   stopVoice();
@@ -2812,7 +2917,19 @@ function summaryRow(cls, word, note) {
   </button>`;
 }
 
-function finish() {
+function countUp(el, to, delay, ms) {
+  const from = performance.now() + delay;
+  el.textContent = '0%';
+  const step = now => {
+    const t = Math.min(1, Math.max(0, (now - from) / ms));
+    el.textContent = `${Math.round(to * (1 - (1 - t) ** 2))}%`;
+    if (t < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+function finish(early = false) {
+  stopCountdown();
   if (canSpeak) speechSynthesis.cancel();
   stopLetters();
   stopVoice();
@@ -2831,12 +2948,15 @@ function finish() {
   const done = totals.get(today) || 0;
   const pct = Math.round((score / results.length) * 100);
   const secs = Math.round((Date.now() - session.started) / 1000);
-  sound(pct === 100 ? 'perfect' : 'complete');
-  if (done >= goal && done - results.length < goal) setTimeout(() => sound('goal'), 900);
+  // The score counts up with little ticks, then the finished tune. Finishing early waits for its chime.
+  const delay = early ? 350 : 0;
+  setTimeout(() => sound('score'), delay);
+  setTimeout(() => sound(pct === 100 ? 'perfect' : 'complete'), delay + 600);
+  if (done >= goal && done - results.length < goal) setTimeout(() => sound('goal'), delay + 1500);
+  countUp($('#summary-pct'), pct, delay, 560);
 
   $('#summary-list-name').textContent = session.label;
   $('#summary-ring').style.setProperty('--pct', pct);
-  $('#summary-pct').textContent = `${pct}%`;
   $('#summary-message').textContent = `${pct === 100 ? 'Perfect' : pct >= 70 ? 'Great work' : 'Keep going'}, ${ACCESS_USER}`;
   $('#summary-sub').textContent = `${score} of ${results.length} spelled right`;
   $('#summary-correct').textContent = score;

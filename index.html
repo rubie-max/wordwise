@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap">
-  <link rel="stylesheet" href="styles.css?v=48">
+  <link rel="stylesheet" href="styles.css?v=49">
 </head>
 <body class="locked">
   <div id="gate" class="gate">
@@ -509,6 +509,24 @@
       <p id="tally" class="tally" hidden></p>
       <div id="segs" class="segs"></div>
 
+      <!-- 3, 2, 1 before the first word -->
+      <div id="count-screen" class="count-screen" aria-live="assertive">
+        <div class="count-stage">
+          <i class="count-ripple"></i><i class="count-ripple late"></i>
+          <svg class="count-ring" viewBox="0 0 206 206" aria-hidden="true">
+            <circle cx="103" cy="103" r="94" stroke-dasharray="176.87 590.62" stroke-dashoffset="-10"/>
+            <circle cx="103" cy="103" r="94" stroke-dasharray="176.87 590.62" stroke-dashoffset="-206.87"/>
+            <circle cx="103" cy="103" r="94" stroke-dasharray="176.87 590.62" stroke-dashoffset="-403.75"/>
+          </svg>
+          <div class="count-orb"><b id="count-num">3</b></div>
+        </div>
+        <div class="count-text">
+          <h2 id="count-title">Get ready to listen</h2>
+          <p id="count-sub" class="muted">Turn your sound up</p>
+        </div>
+        <p class="cap count-skip">Tap anywhere to start now</p>
+      </div>
+
       <!-- Listen and type -->
       <div class="ask">
         <div class="listen-big">
@@ -701,7 +719,7 @@
     Definitions from the <a href="https://dictionaryapi.dev/" target="_blank" rel="noopener">Free Dictionary API</a> and <a href="https://en-word.net/" target="_blank" rel="noopener">Open English WordNet</a> (CC BY 4.0). Progress is saved only in this browser.
   </footer>
 
-  <script src="words.js?v=48"></script>
-  <script src="app.js?v=48"></script>
+  <script src="words.js?v=49"></script>
+  <script src="app.js?v=49"></script>
 </body>
 </html>
