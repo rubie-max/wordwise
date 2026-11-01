@@ -533,7 +533,7 @@ const SOUNDS = {
   ready: () => tones([[880, 0, 0.08], [1174.66, 0.06, 0.2]], { type: 'sine', volume: 0.1 }),
   next: () => tones([[523.25, 0, 0.06], [659.25, 0.045, 0.1]], { type: 'sine', volume: 0.08 }),
   finish: () => tones([[659.25, 0, 0.1], [523.25, 0.08, 0.24]], { volume: 0.12 }),
-  score: () => tones(Array.from({ length: 8 }, (_, i) => [1046.5 + i * 60, i * 0.07, 0.04]), { type: 'sine', volume: 0.05 }),
+  done: () => tones([[523.25, 0, 0.16], [659.25, 0.12, 0.16], [783.99, 0.24, 0.16], [1046.5, 0.36, 0.55]], { volume: 0.18 }),
   found: () => tones([[783.99, 0, 0.08], [1046.5, 0.05, 0.16]], { volume: 0.1 }),
   missing: () => tones([[392, 0, 0.1], [349.23, 0.08, 0.18]], { type: 'sine', volume: 0.1 }),
   added: () => tones([[659.25, 0, 0.08], [880, 0.06, 0.18]], { volume: 0.12 }),
@@ -548,8 +548,39 @@ const soundPrefs = () => ({
   keyMode: store.get('keyMode', store.get('keySounds', true) ? 'say' : 'off'),
 });
 
+// Recorded sound effects from Freesound and Kenney, all CC0 (free for any use), with their
+// lengths in seconds so a spoken word can wait until the sound before it has finished.
+// The synthesised tones above stand in until the recordings have loaded.
+const SFX = {
+  correct: 0.98, wrong: 0.63, skip: 0.9, streak: 1.4, complete: 2.91, done: 1.69, perfect: 2.18, goal: 2.6,
+  go: 0.45, tick: 0.16, tickLast: 0.45, ready: 0.17, next: 0.1, finish: 0.16, found: 0.42, missing: 0.59,
+  added: 0.45, removed: 1, tab: 0.01, toggle: 0.13,
+};
+const sfxBuffers = {};
+let sfxLoading = null;
+
+function loadSfx() {
+  const ctx = audioCtx();
+  if (!ctx || sfxLoading) return;
+  sfxLoading = Promise.all(Object.keys(SFX).map(name => fetch(`sfx/${name}.mp3?v=1`)
+    .then(r => (r.ok ? r.arrayBuffer() : Promise.reject()))
+    .then(data => new Promise((resolve, reject) => ctx.decodeAudioData(data, resolve, reject)))
+    .then(buffer => { sfxBuffers[name] = buffer; })
+    .catch(() => {})));
+}
+
+// Returns how long the sound lasts, in seconds, or 0 when sounds are off.
 function sound(name) {
-  if (soundPrefs().sfx) SOUNDS[name]?.();
+  if (!soundPrefs().sfx) return 0;
+  const ctx = sfx.ctx;
+  const buffer = sfxBuffers[name];
+  if (ctx && buffer) {
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(ctx.destination);
+    src.start();
+  } else SOUNDS[name]?.();
+  return SFX[name] || 0;
 }
 
 function buzz(pattern) {
@@ -622,6 +653,7 @@ function playCountClip(n) {
 document.addEventListener('pointerdown', () => {
   loadLetterClips();
   loadCountClips();
+  loadSfx();
   if (voiceAudio.src) return;
   voiceAudio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
   voiceAudio.play().catch(() => {});
@@ -2250,6 +2282,7 @@ function countBeat(n) {
   void screen.offsetWidth;
   screen.classList.add('beat');
   playCountClip(n);
+  if (!n) sound('go');
 }
 
 function endCountdown() {
@@ -2836,17 +2869,18 @@ async function record(word, typed) {
   renderSegs();
   const last = !session.discover && index + 1 >= session.words.length;
   $$('.next-btn').forEach(b => (b.textContent = last ? 'See results' : 'Next word'));
+  let chime;
   if (correct) {
     showCorrect(word, secs);
-    sound(isMilestone(inARow()) ? 'streak' : 'correct');
+    chime = sound(isMilestone(inARow()) ? 'streak' : 'correct');
   } else {
     showWrong(word, typed);
-    sound(typed ? 'wrong' : 'skip');
+    chime = sound(typed ? 'wrong' : 'skip');
     if (typed) buzz([25, 40, 25]);
   }
   if (store.get('sayAfterCheck', true)) {
-    // Waits for the longest chime (the streak one) so the word never plays over it.
-    const wait = soundPrefs().sfx ? 700 : 150;
+    // Waits for the chime so the word never plays over it.
+    const wait = Math.min(1600, 150 + chime * 1000);
     sayLater(() => { if (session.index === index && session.checked && !$('#session').hidden) speak(word); }, wait);
   }
 
@@ -2948,12 +2982,15 @@ function finish(early = false) {
   const done = totals.get(today) || 0;
   const pct = Math.round((score / results.length) * 100);
   const secs = Math.round((Date.now() - session.started) / 1000);
-  // The score counts up with little ticks, then the finished tune. Finishing early waits for its chime.
-  const delay = early ? 350 : 0;
-  setTimeout(() => sound('score'), delay);
-  setTimeout(() => sound(pct === 100 ? 'perfect' : 'complete'), delay + 600);
-  if (done >= goal && done - results.length < goal) setTimeout(() => sound('goal'), delay + 1500);
-  countUp($('#summary-pct'), pct, delay, 560);
+  // A victory jingle for 80% or more, a firework below that, and the daily goal after either.
+  // Finishing early waits for its own chime first.
+  const delay = early ? 250 : 0;
+  const reachedGoal = done >= goal && done - results.length < goal;
+  setTimeout(() => {
+    const len = sound(pct === 100 ? 'perfect' : pct >= 80 ? 'complete' : 'done');
+    if (reachedGoal) setTimeout(() => sound('goal'), len * 1000 + 200);
+  }, delay);
+  countUp($('#summary-pct'), pct, delay, 700);
 
   $('#summary-list-name').textContent = session.label;
   $('#summary-ring').style.setProperty('--pct', pct);
